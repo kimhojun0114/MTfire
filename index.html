@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>대한민국 산불 20년 — 분석과 탐색</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"></script>
+<style>
+:root{
+  --bg:#eceee9; --panel:#f7f8f5; --ink:#1f221e; --muted:#62685f; --line:#c9cdc4; --ember:#b8321f; --faint:#dde0d8; --cool:#3f6e8c;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#171915; --panel:#20231f; --ink:#e7e9e3; --muted:#9aa196; --line:#373b34; --ember:#e0634a; --faint:#2c302a; --cool:#7fb0d0; }}
+:root[data-theme="dark"]{ --bg:#171915; --panel:#20231f; --ink:#e7e9e3; --muted:#9aa196; --line:#373b34; --ember:#e0634a; --faint:#2c302a; --cool:#7fb0d0; }
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 104px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;line-height:1.65}
+
+
+nav a{color:var(--muted);text-decoration:none;font-size:.85rem;padding:4px 10px;border-radius:3px}
+nav a:hover{color:var(--ink);background:var(--faint)}
+main{max-width:1080px;margin:0 auto;padding:36px 20px 56px}
+h1{font-size:clamp(1.8rem,4vw,2.6rem);line-height:1.2;margin:0 0 10px;letter-spacing:-.01em}
+.lede{color:var(--muted);max-width:62ch;margin:0 0 22px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:34px}
+.kpi{background:var(--panel);padding:14px 16px}
+.kpi b{display:block;font-size:1.6rem;line-height:1.25;font-variant-numeric:tabular-nums}
+.kpi span{font-size:.8rem;color:var(--muted)}
+section{background:var(--panel);border:1px solid var(--line);padding:24px;margin-bottom:24px}
+.no{color:var(--ember);font-weight:700;font-size:.9rem}
+h2{font-size:1.3rem;margin:2px 0 6px;line-height:1.35}
+.sub{color:var(--muted);font-size:.92rem;margin:0 0 14px;max-width:70ch}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+button{font:inherit;font-size:.84rem;background:transparent;color:var(--ink);border:1px solid var(--line);padding:4px 12px;cursor:pointer;border-radius:3px}
+button:hover{border-color:var(--ember)}
+button[aria-pressed="true"]{background:var(--ember);border-color:var(--ember);color:#fff}
+:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+.chart{position:relative;height:340px}
+.take{border-left:3px solid var(--ember);padding:2px 0 2px 12px;margin:16px 0 0;font-size:.93rem;max-width:78ch}
+.take b{color:var(--ember)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px}
+/* heatmap */
+.hm-wrap{overflow-x:auto}
+.hm{display:grid;grid-template-columns:3.4em repeat(12,minmax(34px,1fr));gap:2px;min-width:520px;font-size:.72rem}
+.hm div{text-align:center;padding:4px 0;font-variant-numeric:tabular-nums}
+.hm .h{color:var(--muted)}
+.hm .c{cursor:pointer;border-radius:2px}
+.hm .c.sel{outline:2px solid var(--ink);outline-offset:-2px}
+.legend{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted);margin:10px 0 0}
+.legend i{display:inline-block;width:150px;height:10px;background:linear-gradient(90deg,#3f6e8c,#f3f1ea,#b8321f)}
+.cell-info{min-height:3.2em;font-size:.9rem;margin-top:10px}
+/* cases */
+.cases{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}
+.case{border:1px solid var(--line);padding:16px;background:var(--bg)}
+.case.hl{border-color:var(--ember)}
+.case h3{font-size:1.02rem;margin:6px 0 2px}
+.badge{display:inline-block;font-size:.72rem;border:1px solid;padding:0 7px;border-radius:10px;font-weight:600}
+.case .fact{font-size:.82rem;color:var(--muted);margin:0 0 10px}
+.case .k{font-size:.8rem;font-weight:700;margin:8px 0 2px}
+.case .k.cl{color:var(--cool)} .case .k.hu{color:var(--ember)}
+.case p{margin:0;font-size:.88rem}
+.case .ref{margin-top:8px;font-size:.78rem;color:var(--muted)}
+.refs{font-size:.8rem;color:var(--muted);margin:10px 0 0;padding-left:1.4em}
+.refs li{margin:2px 0}
+.refs a,.case .ref a{color:var(--cool)}
+.mech{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:16px;align-items:stretch}
+.mech .col{border:1px solid var(--line);padding:16px;background:var(--bg)}
+.mech h3{margin:0 0 4px;font-size:1.05rem}
+.mech .col.cl h3{color:var(--cool)} .mech .col.hu h3{color:var(--ember)}
+.mech ul{margin:6px 0 0;padding-left:1.1em;font-size:.88rem}
+.mech li{margin-bottom:6px}
+.mech .x{align-self:center;font-size:1.6rem;color:var(--muted)}
+.eq{text-align:center;font-weight:700;margin:16px 0 0;font-size:1rem}
+.caveat{font-size:.82rem;color:var(--muted);margin-top:14px}
+.src{font-size:.84rem;margin:0;padding-left:1.4em}.src li{margin-bottom:4px}
+footer{color:var(--muted);font-size:.8rem}
+@media (max-width:820px){.kpis{grid-template-columns:repeat(2,1fr)}.two,.cases{grid-template-columns:1fr}.mech{grid-template-columns:1fr}.mech .x{justify-self:center}section{padding:16px}.chart{height:300px}}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--bg);border-bottom:1px solid var(--line)}
+header.top .row1{max-width:1180px;margin:0 auto;padding:10px 20px 8px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:1.02rem;margin-right:auto}
+.tabs{display:flex;gap:4px}
+.tabs button{border:none;border-bottom:2px solid transparent;border-radius:0;padding:6px 12px;font-size:.92rem;color:var(--muted)}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ember);background:transparent;font-weight:600}
+header.top nav{border-top:1px solid var(--line)}
+header.top nav .in{max-width:1080px;margin:0 auto;padding:6px 20px;display:flex;gap:4px;overflow-x:auto;white-space:nowrap}
+body.explore header.top nav{display:none}
+#view-explore{max-width:1180px;margin:0 auto;padding:28px 20px 56px}
+.exp{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);padding:16px;display:grid;gap:16px}
+.grp h3{font-size:.82rem;color:var(--muted);font-weight:600;margin:0 0 6px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{font-size:.8rem;padding:3px 10px}
+button:disabled{opacity:.35;cursor:not-allowed}
+select{font:inherit;font-size:.88rem;width:100%;padding:5px 8px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:3px}
+.axrow{display:grid;grid-template-columns:4.2em 1fr;align-items:center;gap:8px;margin-bottom:6px;font-size:.88rem}
+.dimbox{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.dimbox:first-child{border-top:none;margin-top:0;padding-top:0}
+.dimhead{display:flex;justify-content:space-between;align-items:center;font-size:.86rem;margin-bottom:6px}
+.role{font-size:.72rem;color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:0 7px}
+.role.rest{color:var(--ember);border-color:var(--ember)}
+.mini{display:flex;flex-wrap:wrap;gap:4px}
+.mini button{font-size:.72rem;padding:2px 7px}
+.mini button[aria-pressed="false"]{opacity:.45}
+.mini button[aria-pressed="true"]{background:var(--faint);color:var(--ink);border-color:var(--ink)}
+.yr{display:flex;gap:6px;align-items:center;font-size:.8rem}
+.yr input{width:100%;accent-color:var(--ember)}
+.aggsel{display:flex;gap:4px;margin-top:6px}
+.aggsel button{font-size:.72rem;padding:2px 8px}
+.stage{background:var(--panel);border:1px solid var(--line);padding:18px}
+.stage h2{margin:0 0 2px;font-size:1.2rem}
+.stage .meta{color:var(--muted);font-size:.85rem;margin:0 0 8px}
+#ex-plot{width:100%;height:560px}
+.notes{font-size:.82rem;color:var(--muted);margin-top:8px;min-height:1.4em}
+.notes b{color:var(--ember)}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+.presets button{font-size:.84rem}
+.sharebar{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.sharebar input{flex:1;min-width:200px;font:inherit;font-size:.78rem;padding:4px 8px;border:1px solid var(--line);background:var(--bg);color:var(--muted)}
+@media (max-width:900px){.exp{grid-template-columns:1fr}#ex-plot{height:440px}}
+
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="row1"><span class="brand">🔥 대한민국 산불 20년</span>
+    <div class="tabs" role="tablist"><button role="tab" data-view="story" aria-selected="true">분석 이야기</button><button role="tab" data-view="explore" aria-selected="false">직접 탐색</button></div></div>
+  <nav><div class="in">
+  <a href="#s1">① 월별 합계</a><a href="#s2">② 연도별 합계</a><a href="#s3">③ 월×원인</a><a href="#s4">④ 월 순위</a><a href="#s5">⑤ 원인별 변화</a><a href="#s6">⑥ 특이 연도 분석</a><a href="#s7">⑦ 왜 봄인가</a><a href="#s8">출처</a>
+</div></nav>
+</header>
+<main id="view-story">
+<h1>대한민국 산불 20년: 언제, 왜 나는가</h1>
+<p class="lede">산림청 산불통계(2006~2025년)의 월별·원인별 발생건수를 분석했습니다. 그래프 위에 마우스를 올리면 정확한 값이, 범례를 누르면 항목을 켜고 끌 수 있습니다. 축을 직접 골라 보고 싶다면 <a href="#explore">직접 탐색</a>으로 가세요.</p>
+<div class="kpis" id="kpis"></div>
+
+<section id="s1">
+  <div class="no">①</div><h2>월별 산불 발생 빈도합</h2>
+  <p class="sub">20년 동안 각 달에 발생한 산불을 모두 더했습니다. 달마다 날짜 수가 다르므로 하루 평균으로도 볼 수 있습니다.</p>
+  <div class="bar" data-grp="m1"><button data-v="sum" aria-pressed="true">합계 건수</button><button data-v="daily" aria-pressed="false">하루 평균 건수</button></div>
+  <div class="chart"><canvas id="c1"></canvas></div>
+  <p class="take" id="t1"></p>
+</section>
+
+<section id="s2">
+  <div class="no">②</div><h2>연도별 산불 발생 빈도합, 그리고 가뭄·피해면적</h2>
+  <p class="sub">막대는 해마다 발생한 산불 건수이고, 점선은 20년 평균입니다. 버튼으로 기상청의 연간 기상가뭄 발생일수나 산림청의 연간 피해면적을 겹쳐 볼 수 있습니다.</p>
+  <div class="bar" data-grp="m2"><button data-v="none" aria-pressed="false">건수만</button><button data-v="drought" aria-pressed="true">+ 기상가뭄 일수</button><button data-v="area" aria-pressed="false">+ 피해면적(로그)</button></div>
+  <div class="chart"><canvas id="c2"></canvas></div>
+  <p class="take" id="t2"></p>
+</section>
+
+<section id="s3">
+  <div class="no">③</div><h2>월별 · 원인별 발생 건수</h2>
+  <p class="sub">각 달의 산불을 원인별로 나눴습니다. '월 안에서 비율'로 바꾸면 달마다 어떤 원인이 주도하는지 비교할 수 있습니다.</p>
+  <div class="bar" data-grp="m3"><button data-v="cnt" aria-pressed="true">건수</button><button data-v="pct" aria-pressed="false">월 안에서 비율(%)</button></div>
+  <div class="chart" style="height:380px"><canvas id="c3"></canvas></div>
+  <p class="take">3월은 <b>논밭두렁·쓰레기 소각</b>이 925건으로 그달 산불의 40%를 차지합니다. 4월은 <b>입산자 실화</b>가 806건(39%)으로 가장 많습니다. 9월에는 평소 3.7%에 불과한 <b>성묘객 실화</b>가 21%로 뛰는데, 추석 성묘 시기와 겹칩니다.</p>
+</section>
+
+<section id="s4">
+  <div class="no">④</div><h2>월별 순차 정렬: 어느 달이 가장 위험한가</h2>
+  <p class="sub">월별 합계를 많은 순서로 정렬하고, 위에서부터 누적한 비율을 선으로 표시했습니다.</p>
+  <div class="bar" data-grp="m4"><button data-v="desc" aria-pressed="true">많은 순</button><button data-v="cal" aria-pressed="false">달력 순</button></div>
+  <div class="chart"><canvas id="c4"></canvas></div>
+  <p class="take" id="t4"></p>
+</section>
+
+<section id="s5">
+  <div class="no">⑤</div><h2>원인별 발생 건수의 변화</h2>
+  <p class="sub">원인별로 해마다 몇 건이 났는지, 그리고 20년 동안 합계가 어떻게 쌓였는지 볼 수 있습니다. 범례를 눌러 비교할 원인만 남겨 보세요.</p>
+  <div class="bar" data-grp="m5"><button data-v="yr" aria-pressed="true">연도별 건수</button><button data-v="cum" aria-pressed="false">누적 합계</button><button data-v="pct" aria-pressed="false">연도 안에서 비율(%)</button></div>
+  <div class="chart" style="height:380px"><canvas id="c5"></canvas></div>
+  <div class="two" style="margin-top:16px">
+    <p class="take" style="margin:0"><b>늘어난 원인</b>: 건축물 화재는 전기(2006~15) 연평균 9.0건에서 후기(2016~25) 36.8건으로 약 4배가 됐습니다. 산림청도 산림 가까이 주택·펜션·공장이 늘면서 건물 화재가 산으로 옮겨붙는 사례가 늘었다고 설명합니다. '기타'도 66.7건에서 160.5건으로 2.4배가 됐는데, 기타는 '원인 미상'만이 아니라 8개 분류에 들지 않는 방화, 산업시설, 군사훈련, 원인미상 등을 합친 값이라 해석에 주의가 필요합니다.</p>
+    <p class="take" style="margin:0"><b>줄어든 원인</b>: 논밭두렁 소각은 70.7건에서 53.6건으로 24% 줄었습니다. 영농부산물을 태우는 대신 수거·파쇄하도록 하는 정책과 농촌 변화가 함께 작용했을 수 있지만, 특정 정책 하나의 효과로 단정할 근거는 아직 없습니다. 입산자 실화는 거의 그대로지만(156.5 → 159.1건), 2024~25년에는 크게 줄었습니다.</p>
+  </div>
+</section>
+
+<section id="s6">
+  <div class="no">⑥</div><h2>특이 연도 분석: 평소와 다른 달에 산불이 몰린 해</h2>
+  <p class="sub">각 칸은 그해 산불 중 그 달이 차지한 비율이 20년 평균보다 몇 %p 높은지(빨강) 또는 낮은지(파랑)를 나타냅니다. 칸을 누르면 값과 원인 구성이 나오고, 아래 분석 카드가 있는 칸은 테두리로 표시됩니다.</p>
+  <div class="hm-wrap"><div class="hm" id="hm"></div></div>
+  <div class="legend"><span>평균보다 낮음</span><i></i><span>평균보다 높음</span></div>
+  <div class="cell-info" id="cellinfo">칸을 눌러 보세요.</div>
+
+  <div class="cases" id="cases"></div>
+  <p class="caveat">산불 건수와 비율은 산림청 통계로 계산한 값이고, 기상 배경은 아래 기상청 발표와 언론 보도에서 확인한 내용입니다. 일부 수치는 전국이 아닌 지역(충남 금강수계, 호남) 자료이니 인용할 때 범위를 함께 밝혀 주세요.</p>
+  <ol class="refs">
+    <li id="ref1">기상청, 「2018 기상연감」 — 8월 전국 평균기온 27.3℃ 역대 최고, 폭염일수 31.4일</li>
+    <li id="ref2">머니투데이(2018.7.17) — 2018년 장마 1973년 이후 가장 짧아</li>
+    <li id="ref3">기상청, 「엘리뇨 뉴스레터」 2012년 6월호 — 6월 전국 강수량 74.7mm(평년의 50%)</li>
+    <li id="ref4">김정엽 외, 「2015년 금강수계 및 충남 서북부 지역의 가뭄상황 분석」 — 금강수계 강수량 평년의 64.3%, 6~9월 38.3%</li>
+    <li id="ref5">기상청 보도자료(2024.1.26) — 2014~2023년 중 기상가뭄 100일 이상인 해: 2014, 2015, 2017, 2019, 2022년</li>
+    <li id="ref6">서울신문·한국일보(2019.2.1) — 2019년 1월 전국 강수량 8.1mm, 서울 0mm</li>
+    <li id="ref7">경향신문(2010.12.26) — 2010년 3~4월 이상저온과 일조량 부족</li>
+    <li id="ref8">광주지방기상청 보도자료(2010.4.27) — 호남 봄철 강수일수 21.8일, 1973년 이후 최다</li>
+    <li id="ref9">경북매일(2022.3.7) — 2021년 겨울 전국 강수량 13.3mm, 1973년 이후 최저</li>
+    <li id="ref10">뉴시스(2022.6.13) — 2021.11~2022.5 강수량 평년의 48.6%</li>
+    <li id="ref11">기상청 보도자료(2025.1.9) — 2024년 강수일수 132일(평년 115.7일), 2월 많은 비</li>
+    <li id="ref12">뉴시스(2025.3.22) — 의성 산불, 성묘객 묘지 정리 중 실화 자진 신고</li>
+  </ol>
+</section>
+
+<section id="s7">
+  <div class="no">⑦</div><h2>왜 봄에 산불이 몰리는가: 기후와 사람의 곱</h2>
+  <p class="sub">불이 나려면 열(점화원), 연료, 산소가 모두 필요합니다(연소의 3요소). 통계의 원인 항목은 '기타'를 빼면 모두 사람이 만든 점화원이고, 기후는 연료가 얼마나 잘 타고 불이 얼마나 빨리 번지는지를 결정합니다.</p>
+  <div class="mech">
+    <div class="col cl">
+      <h3>기후 요소: 불이 붙기 쉬운 조건</h3>
+      <ul>
+        <li><b>낮은 습도</b>: 봄에는 건조한 이동성 고기압이 자주 지나가 맑고 건조한 날이 이어집니다. 기상청은 실효습도 35% 이하가 이어질 것으로 예상될 때 건조주의보를 냅니다.</li>
+        <li><b>마른 연료</b>: 겨울 동안 쌓인 낙엽과 마른 풀이 새잎이 나기 전까지 그대로 남아 있습니다. 반대로 여름에는 장마와 수분이 많은 푸른 잎 때문에 불이 잘 붙지 않습니다.</li>
+        <li><b>강한 바람</b>: 봄철 영동 지방에는 태백산맥을 넘으며 고온 건조해진 강풍(양간지풍, 푄 현상)이 불어 작은 불씨도 대형 산불로 키웁니다.</li>
+        <li><b>장기 가뭄</b>: 기상가뭄이 100일 이상이었던 해는 산불이 평균 약 1.6배 많았습니다(② 참고, 상관계수 0.61). 반대로 비 오는 날이 많았던 2024년은 산불이 크게 줄었습니다.</li>
+        <li><b>단기 극한 기상</b>: 한 달만 극도로 건조해도(2019년 1월) 산불이 늘고, 며칠간의 고온·강풍(2025년 3월 21~26일)은 한 건의 불을 10만ha 산불로 키웁니다.</li>
+      </ul>
+    </div>
+    <div class="x">×</div>
+    <div class="col hu">
+      <h3>인위적 요소: 불씨를 만드는 행동</h3>
+      <ul>
+        <li><b>영농 준비</b>: 2~3월 논밭두렁과 쓰레기를 태우는 관행이 3월 피크를 만듭니다(3월 소각 원인 40%).</li>
+        <li><b>입산 증가</b>: 날씨가 풀리는 4~5월 등산과 나들이가 늘며 입산자 실화가 4월에 최고(806건)가 됩니다. 코로나19 첫해인 2020년에는 전국 국립공원 탐방객은 줄었지만 북한산처럼 도시 가까운 산은 오히려 늘었고, 그해 입산자 실화는 217건으로 평균보다 많았습니다.</li>
+        <li><b>명절·성묘</b>: 청명·한식(4월 초)과 추석(9월)에 성묘객 실화가 솟습니다. 설날이 2월인 해는 2월 성묘객 실화가 1월인 해보다 약 2.5배 많아, 명절 날짜가 산불 시기를 움직인다는 것이 데이터에서도 보입니다.</li>
+        <li><b>생활권 확대</b>: 산림과 주거지가 맞닿은 지역이 늘면서 건축물 화재가 산불로 번지는 경우가 4배로 늘었습니다. 산림청 자료에서도 2000년대 연 7.5건에서 2020년대 연 36건으로 같은 추세가 확인됩니다.</li>
+        <li><b>정책</b>: 봄철(2월 1일~5월 15일)과 가을철(11월 1일~12월 15일) 산불조심기간을 운영하고, 영농부산물을 태우는 대신 수거·파쇄하도록 유도합니다. 논밭두렁 소각은 줄었지만 정책만의 효과인지는 아직 확인되지 않았습니다.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="eq">산불 발생 = 점화원(사람) × 발화·확산 조건(기후)</p>
+  <p class="take">3~4월 피크는 봄철의 건조한 기후와 영농·입산·성묘 같은 <b>사람</b>의 활동이 같은 시기에 겹쳐서 생깁니다. 사람의 활동은 해마다 비슷하게 반복되지만 <b>기후</b>는 해마다 달라지기 때문에, 같은 봄(2~4월)이라도 어떤 해는 약 80건, 어떤 해는 450건이 넘는 차이가 생기고, 가뭄이 들면 산불이 여름이나 겨울처럼 평소와 다른 달로 번집니다.</p>
+  <p class="take"><b>건수와 피해는 다른 날씨에 반응합니다.</b> 연간 가뭄 일수는 산불 건수와 뚜렷한 관계(r = 0.61)가 있지만 피해면적과는 관계가 약합니다(r = 0.25). 대형 피해는 긴 가뭄보다 불이 난 며칠 동안의 강풍·고온·극건조에 좌우됩니다. 그래서 드론 감시는 봄철 전체를 넓게 순찰하되, 건조·강풍 특보가 겹치는 날에는 초기 발견에 자원을 집중하는 전략이 효과적입니다.</p>
+</section>
+
+<section id="s8">
+  <div class="no">출처</div><h2>자료 출처</h2>
+  <p class="sub">산불 건수·비율·원인 구성은 모두 KOSIS 원자료로 직접 계산했습니다. 아래는 해석에 쓴 외부 자료입니다. 보고서에 인용하기 전에 원문을 한 번씩 열어 확인하세요.</p>
+  <ol class="src">
+    <li id="ref1">산림청, 「산불통계」 월별·원인별 발생건수, KOSIS TX_13625_A003 (2026.9.21 다운로드)</li>
+    <li id="ref2">산림청, 「산불 제대로 알기」 (연도별 피해면적, 대형산불 사례, 원인별 장기 변화)</li>
+    <li id="ref3">e-나라지표, 산불 발생 현황과 피해면적 (2011~2025년)</li>
+    <li id="ref4">기상청 보도자료, 기상가뭄 발생 특성 분석 (2023.1.18) 및 2023·2024년 기상가뭄 분석 (2024.1.26, 2025.1.24)</li>
+    <li id="ref5">기상청, 2025년 3월 기후특성·경북 산불 기간 강풍 자료 (2025.4.2), 2025년 연 기후특성 (2026.1.6), 2025년 이상기후 보고서 (2026.3)</li>
+    <li id="ref6">기상청, 2015년 3월 기상특성 (2016.4.1); 대전지방기상청·청주기상지청 2015년 9월 기후자료</li>
+    <li id="ref7">기상청, 기상연감 2018; 머니투데이 2018.7.17 (2018년 장마 기간)</li>
+    <li id="ref8">기상청, 엘니뇨 뉴스레터 2012년 6월호</li>
+    <li id="ref9">기상청, 2019년 1월 기상특성 (2019.2.1)</li>
+    <li id="ref10">광주지방기상청, 2010년 봄철 강수일수·일조시간 (2010.4.27)</li>
+    <li id="ref11">경북매일 2022.3.7 (2021년 겨울 강수량, 기상청 인용)</li>
+    <li id="ref12">기상청, 2024년 연 기후분석 (2025.1.9)</li>
+    <li id="ref13">뉴시스 2025.3.22, 경북매일 2025.3.30 (의성 산불 발화 원인)</li>
+    <li id="ref14">환경부·국립공원공단, 코로나19 시기 국립공원 탐방 분석 (2020.7.28); KOSIS 국립공원 탐방객 통계</li>
+    <li id="ref15">산림청, 2014년 산불방지 업무지침 (세부 원인 분류)</li>
+  </ol>
+</section>
+
+<footer>출처: 산림청 「산불통계」 월별·원인별 발생건수(KOSIS, TX_13625_A003), 단위: 건. 원본의 '-'는 0건으로 처리했습니다. 2022년에는 '어린이불장난' 항목이 없어 원인별 추이(⑤)에서는 결측으로 표시했고, 월·연 합계에는 0건으로 들어갑니다. 2025년 기상가뭄 일수는 같은 방식의 공개 자료가 없어 비워 두었습니다.</footer>
+</main>
+<div id="view-explore" hidden>
+  <h1 style="font-size:clamp(1.5rem,3vw,2rem);margin:0 0 6px">직접 탐색하기</h1>
+  <p class="lede" style="margin-bottom:14px">연도·월·원인 중 축을 고르면 알맞은 그래프가 자동으로 그려집니다. 축에 쓰지 않은 변수는 합치거나 평균을 내고, 원하는 값만 골라 볼 수 있습니다.</p>
+  <div class="presets" id="ex-presets" aria-label="추천 보기"></div>
+  <div class="exp">
+    <aside class="panel" aria-label="그래프 설정">
+      <div class="grp"><h3>차원</h3><div class="seg" id="ex-dim"><button data-v="2">2D</button><button data-v="3">3D</button></div></div>
+      <div class="grp"><h3>축</h3>
+        <div class="axrow"><span>X축</span><select id="ex-x"></select></div>
+        <div class="axrow"><span id="ex-slab">계열(색)</span><select id="ex-s"></select></div>
+      </div>
+      <div class="grp"><h3>그래프 종류</h3><div class="seg" id="ex-chart"></div></div>
+      <div class="grp"><h3>값 표시</h3><div class="seg" id="ex-val"></div></div>
+      <div class="grp"><h3>데이터 범위와 남는 변수</h3><div id="ex-dims"></div></div>
+    </aside>
+    <div class="stage">
+      <h2 id="ex-title"></h2><p class="meta" id="ex-meta"></p>
+      <div id="ex-plot"></div>
+      <div class="notes" id="ex-notes"></div>
+      <div class="sharebar"><span style="font-size:.82rem;color:var(--muted)">이 설정의 링크</span><input id="ex-link" readonly aria-label="현재 설정 링크"><button id="ex-copy">복사</button></div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+const D = {"years": [2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025], "causes": ["입산자실화", "기타", "논밭두렁등소각", "쓰레기소각", "담뱃불실화", "건축물화재", "성묘객실화", "어린이불장난"], "v": [[[23, 11, 3, 3, 4, 1, 1, 2], [15, 2, 15, 2, 4, 0, 0, 3], [73, 19, 39, 19, 12, 2, 4, 7], [24, 10, 4, 6, 3, 1, 0, 1], [17, 5, 0, 2, 2, 0, 1, 0], [0, 0, 0, 1, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [4, 1, 0, 0, 0, 0, 2, 0], [13, 3, 2, 1, 1, 1, 4, 0], [11, 6, 0, 5, 0, 0, 0, 1], [5, 3, 0, 1, 0, 0, 0, 0]], [[24, 11, 9, 3, 11, 0, 3, 0], [48, 12, 32, 7, 10, 1, 7, 5], [23, 4, 28, 4, 8, 0, 1, 2], [62, 9, 17, 5, 4, 1, 12, 0], [7, 2, 1, 0, 1, 0, 0, 0], [10, 1, 5, 2, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0, 0, 0], [15, 3, 0, 0, 2, 0, 0, 0], [3, 1, 0, 0, 1, 0, 0, 0]], [[3, 0, 1, 0, 2, 1, 0, 0], [5, 13, 8, 8, 24, 2, 9, 1], [20, 14, 19, 12, 14, 1, 3, 2], [35, 6, 13, 13, 4, 2, 5, 1], [25, 0, 2, 2, 1, 0, 1, 1], [2, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 2, 0], [5, 1, 1, 1, 1, 0, 4, 0], [14, 1, 8, 1, 1, 0, 0, 0], [29, 4, 4, 4, 2, 1, 1, 0], [10, 6, 6, 3, 0, 2, 1, 1]], [[26, 9, 6, 8, 6, 4, 4, 1], [7, 6, 9, 3, 1, 3, 1, 2], [31, 14, 36, 22, 7, 1, 6, 2], [85, 36, 28, 22, 13, 5, 16, 1], [33, 9, 5, 3, 1, 0, 1, 0], [9, 4, 3, 0, 0, 0, 1, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [5, 1, 1, 0, 2, 0, 4, 0], [10, 4, 3, 2, 0, 1, 3, 0], [9, 6, 2, 4, 2, 0, 0, 0], [7, 7, 1, 3, 2, 1, 0, 0]], [[11, 3, 0, 2, 3, 1, 4, 0], [6, 4, 6, 7, 4, 3, 0, 0], [5, 0, 6, 7, 0, 1, 2, 1], [12, 2, 18, 8, 3, 1, 7, 0], [32, 5, 4, 0, 1, 2, 1, 0], [11, 2, 3, 2, 1, 2, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [3, 2, 0, 0, 0, 0, 0, 0], [31, 8, 0, 4, 1, 0, 0, 0], [27, 3, 1, 4, 0, 4, 1, 0]], [[19, 4, 4, 2, 1, 3, 0, 0], [16, 1, 9, 5, 1, 2, 5, 1], [29, 8, 23, 22, 6, 4, 1, 1], [30, 7, 27, 8, 0, 2, 5, 1], [3, 1, 1, 1, 0, 0, 0, 0], [7, 1, 1, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [2, 2, 0, 0, 2, 0, 0, 0], [2, 0, 1, 0, 2, 0, 0, 0], [2, 1, 0, 1, 0, 0, 0, 0]], [[4, 1, 0, 0, 0, 1, 0, 0], [3, 0, 3, 0, 0, 1, 2, 0], [5, 2, 8, 2, 0, 4, 1, 1], [18, 4, 3, 6, 8, 1, 3, 2], [26, 24, 1, 3, 0, 0, 0, 0], [13, 18, 3, 0, 0, 0, 1, 0], [0, 0, 0, 0, 0, 0, 0, 0], [2, 1, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0, 0], [10, 3, 0, 1, 0, 0, 0, 0], [5, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0]], [[0, 2, 2, 1, 1, 1, 0, 0], [2, 7, 14, 3, 1, 1, 0, 2], [11, 15, 43, 26, 10, 1, 5, 2], [28, 10, 14, 7, 5, 2, 3, 0], [26, 0, 2, 1, 1, 0, 0, 0], [2, 3, 1, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [4, 2, 0, 0, 1, 0, 0, 0], [1, 0, 0, 2, 0, 0, 0, 0], [6, 3, 0, 0, 1, 0, 1, 0], [5, 3, 0, 0, 1, 0, 0, 0], [6, 2, 1, 1, 1, 0, 0, 0]], [[12, 11, 8, 9, 4, 0, 5, 0], [14, 5, 19, 7, 2, 3, 2, 2], [26, 21, 32, 17, 3, 1, 1, 0], [85, 22, 25, 19, 10, 4, 1, 0], [29, 10, 7, 8, 1, 0, 0, 0], [7, 2, 1, 2, 1, 0, 0, 0], [7, 2, 1, 1, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [2, 0, 0, 1, 1, 0, 0, 0], [7, 3, 3, 2, 1, 0, 0, 0], [7, 6, 2, 1, 2, 1, 0, 0], [2, 0, 0, 1, 1, 0, 0, 0]], [[8, 7, 1, 0, 0, 0, 0, 0], [10, 14, 7, 4, 0, 1, 2, 2], [37, 71, 60, 60, 10, 6, 7, 1], [18, 18, 5, 3, 0, 3, 2, 0], [39, 21, 9, 3, 3, 0, 0, 1], [28, 35, 9, 11, 3, 2, 0, 0], [3, 0, 0, 0, 1, 0, 0, 0], [5, 2, 0, 0, 1, 0, 0, 0], [16, 3, 4, 2, 0, 0, 8, 0], [21, 11, 3, 2, 3, 0, 0, 1], [5, 2, 1, 0, 0, 0, 0, 0], [3, 2, 0, 1, 1, 1, 0, 0]], [[9, 5, 4, 11, 1, 5, 0, 1], [11, 16, 9, 19, 3, 1, 3, 0], [18, 17, 41, 28, 8, 0, 4, 0], [27, 14, 16, 15, 2, 5, 7, 0], [10, 6, 3, 2, 0, 0, 0, 0], [15, 4, 4, 4, 0, 1, 0, 0], [1, 0, 0, 0, 0, 0, 0, 0], [4, 7, 0, 1, 0, 0, 2, 0], [3, 0, 0, 0, 0, 0, 2, 0], [0, 1, 0, 0, 0, 0, 0, 0], [2, 6, 1, 0, 0, 0, 0, 0], [7, 3, 1, 0, 0, 1, 0, 0]], [[6, 6, 2, 6, 0, 1, 0, 0], [17, 14, 7, 12, 1, 2, 2, 1], [39, 36, 51, 32, 7, 17, 9, 1], [50, 23, 12, 23, 5, 3, 6, 0], [59, 17, 10, 11, 4, 3, 0, 0], [45, 21, 7, 7, 3, 2, 1, 0], [0, 3, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [3, 0, 0, 1, 0, 0, 0, 0], [2, 1, 0, 1, 0, 0, 0, 0], [16, 16, 3, 12, 2, 0, 1, 0], [17, 13, 2, 5, 2, 8, 3, 0]], [[9, 6, 4, 3, 2, 5, 0, 0], [38, 32, 14, 16, 5, 13, 11, 1], [10, 19, 24, 13, 2, 11, 4, 0], [33, 16, 18, 9, 1, 5, 6, 0], [2, 0, 0, 0, 0, 0, 1, 0], [27, 10, 3, 3, 0, 2, 0, 0], [5, 8, 2, 0, 0, 0, 0, 0], [21, 15, 1, 4, 1, 1, 3, 0], [1, 2, 0, 0, 0, 0, 0, 0], [5, 2, 0, 0, 0, 1, 1, 0], [3, 7, 0, 3, 0, 0, 0, 0], [4, 16, 1, 7, 1, 3, 0, 0]], [[16, 51, 6, 16, 5, 7, 4, 1], [13, 11, 12, 5, 4, 13, 3, 0], [25, 43, 25, 31, 3, 12, 2, 0], [38, 47, 18, 22, 7, 11, 9, 0], [57, 30, 1, 6, 0, 2, 2, 1], [7, 2, 2, 1, 1, 2, 0, 0], [5, 4, 2, 1, 1, 2, 0, 0], [1, 2, 0, 0, 0, 1, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0], [3, 5, 0, 1, 0, 0, 0, 0], [6, 10, 0, 2, 0, 1, 0, 0], [7, 9, 3, 3, 1, 7, 0, 0]], [[8, 9, 1, 4, 5, 2, 0, 0], [11, 7, 6, 4, 6, 6, 1, 1], [54, 25, 20, 31, 22, 15, 4, 0], [64, 61, 12, 11, 18, 15, 3, 0], [8, 8, 1, 3, 4, 2, 0, 0], [11, 13, 4, 2, 5, 3, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0, 0], [2, 0, 0, 0, 0, 0, 0, 0], [25, 4, 1, 2, 3, 0, 0, 0], [22, 8, 2, 4, 4, 6, 0, 0], [12, 14, 2, 4, 8, 5, 1, 0]], [[14, 20, 0, 2, 6, 2, 0, 0], [22, 20, 7, 9, 9, 6, 8, 1], [10, 7, 11, 4, 6, 3, 3, 0], [52, 20, 4, 4, 8, 2, 4, 0], [9, 5, 0, 1, 1, 1, 1, 2], [0, 2, 0, 1, 0, 0, 0, 0], [3, 3, 0, 0, 0, 1, 0, 0], [4, 2, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [12, 7, 0, 2, 3, 0, 0, 0], [7, 8, 0, 3, 1, 5, 0, 0]], [[26, 36, 3, 10, 5, 6, 2, 0], [43, 52, 13, 11, 7, 12, 5, 0], [20, 31, 8, 6, 10, 6, 1, 0], [66, 63, 11, 20, 9, 8, 3, 0], [41, 48, 4, 4, 9, 7, 2, 0], [9, 9, 0, 1, 5, 1, 1, 0], [2, 1, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [5, 5, 0, 1, 0, 0, 0, 0], [10, 10, 1, 1, 2, 0, 0, 0], [16, 18, 3, 4, 4, 2, 0, 0], [15, 9, 1, 1, 2, 9, 0, 0]], [[10, 17, 3, 3, 1, 2, 2, 0], [21, 30, 19, 20, 9, 9, 6, 0], [61, 67, 25, 31, 24, 14, 7, 0], [39, 30, 5, 8, 15, 4, 6, 1], [16, 7, 2, 4, 3, 0, 1, 0], [5, 4, 0, 1, 1, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 1, 0, 1, 0], [8, 2, 0, 2, 1, 0, 0, 0], [6, 6, 1, 1, 0, 11, 0, 0], [4, 12, 1, 3, 1, 1, 0, 0]], [[3, 9, 1, 1, 2, 2, 0, 0], [1, 6, 2, 2, 0, 0, 0, 0], [6, 22, 11, 14, 13, 6, 2, 0], [22, 23, 5, 3, 12, 0, 1, 1], [6, 8, 2, 0, 1, 0, 0, 0], [3, 20, 0, 1, 1, 3, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [1, 3, 0, 1, 0, 0, 2, 0], [0, 4, 1, 0, 0, 0, 1, 0], [0, 1, 0, 0, 1, 0, 0, 0], [2, 10, 1, 1, 3, 1, 0, 0], [5, 15, 1, 5, 3, 2, 0, 0]], [[7, 13, 5, 7, 5, 5, 2, 0], [10, 32, 6, 11, 5, 10, 0, 0], [13, 62, 13, 21, 12, 12, 11, 0], [18, 40, 3, 4, 10, 4, 2, 1], [2, 2, 0, 1, 0, 1, 0, 0], [4, 12, 3, 6, 0, 2, 0, 0], [1, 8, 0, 1, 0, 0, 1, 0], [1, 2, 1, 1, 1, 2, 0, 0], [0, 0, 0, 0, 0, 0, 1, 0], [0, 0, 0, 0, 0, 0, 0, 0], [9, 17, 1, 2, 2, 2, 0, 0], [6, 18, 0, 3, 0, 2, 0, 0]]]};
+const COLORS=['#c0392b','#8f9a92','#e67e22','#d4ac0d','#8e44ad','#2c3e50','#16a085','#3498db'];
+const DAYS=[31,28.25,31,30,31,30,31,31,30,31,30,31];
+const MON=Array.from({length:12},(_,i)=>(i+1)+'월');
+const NY=D.years.length, NC=D.causes.length;
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const sum=a=>a.reduce((x,y)=>x+y,0);
+
+// 집계
+const YM=D.v.map(y=>y.map(m=>sum(m)));                         // [연][월]
+const MT=MON.map((_,m)=>sum(YM.map(r=>r[m])));                 // 월 합계
+const YT=YM.map(r=>sum(r));                                     // 연 합계
+const MC=MON.map((_,m)=>D.causes.map((_,c)=>sum(D.v.map(y=>y[m][c])))); // [월][원인]
+const YC=D.v.map(y=>D.causes.map((_,c)=>sum(y.map(m=>m[c]))));         // [연][원인]
+const MISSING=(y,c)=>y===2022&&D.causes[c]==='어린이불장난';  // 원본에 항목 없음 → 결측
+const TOT=sum(MT);
+const SH=YM.map((r,i)=>r.map(v=>v/YT[i]*100));                 // 연도 내 월 비율
+const MU=MON.map((_,m)=>sum(SH.map(r=>r[m]))/NY);               // 월 평균 비율
+
+// KPI
+const mxY=YT.indexOf(Math.max(...YT)), mnY=YT.indexOf(Math.min(...YT));
+document.getElementById('kpis').innerHTML=[
+  [TOT.toLocaleString()+'건','20년 총 발생건수'],
+  [(TOT/NY).toFixed(0)+'건','연평균'],
+  [((MT[1]+MT[2]+MT[3])/TOT*100).toFixed(1)+'%','2~4월에 발생한 비율'],
+  [D.years[mxY]+'년 '+YT[mxY]+'건','가장 많았던 해']
+].map(([b,s])=>`<div class="kpi"><b>${b}</b><span>${s}</span></div>`).join('');
+
+let charts=[];
+function base(){
+  const ink=css('--ink'), grid=css('--faint');
+  Chart.defaults.font.family='"IBM Plex Sans KR", sans-serif';
+  Chart.defaults.color=css('--muted');
+  return {grid, ink};
+}
+function opts(extra={}){
+  const {grid}=base();
+  return Object.assign({responsive:true,maintainAspectRatio:false,animation:{duration:500},
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{labels:{boxWidth:12,boxHeight:12}},tooltip:{}},
+    scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:grid}}}},extra);
+}
+function fire(t){ // 0~1 → 색
+  const s=['#f3d68c','#ee9a4a','#d64b2a','#8f1d16']; t=Math.max(0,Math.min(1,t));
+  const k=t*(s.length-1), i=Math.min(s.length-2,Math.floor(k)), f=k-i;
+  const a=parseInt(s[i].slice(1),16), b=parseInt(s[i+1].slice(1),16), ch=q=>Math.round(((a>>q)&255)*(1-f)+((b>>q)&255)*f);
+  return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+}
+const state={m1:'sum',m2:'drought',m3:'cnt',m4:'desc',m5:'yr'};
+
+// ① 월별 합계
+function c1(){
+  const daily=state.m1==='daily';
+  const vals=MT.map((v,m)=>daily? v/NY/DAYS[m] : v), mx=Math.max(...vals);
+  document.getElementById('t1').innerHTML = daily
+    ? `하루 평균으로 보면 3월(${vals[2].toFixed(2)}건)과 4월(${vals[3].toFixed(2)}건)에 이어 <b>2월이 ${vals[1].toFixed(2)}건</b>으로 3위입니다. 2월은 28일뿐이라 합계로는 작게 보이지만, 날짜 수를 보정하면 전체 비중이 13.5%에서 14.4%로 올라갑니다.`
+    : `<b>3월(${MT[2].toLocaleString()}건, ${(MT[2]/TOT*100).toFixed(1)}%)</b>이 가장 많고 4월(${(MT[3]/TOT*100).toFixed(1)}%)이 뒤를 잇습니다. 반대로 7월은 ${MT[6]}건(${(MT[6]/TOT*100).toFixed(1)}%)으로 3월의 약 33분의 1입니다. 11월에 작은 두 번째 봉우리가 있는데, 가을철 낙엽이 쌓이고 건조해지는 시기와 겹칩니다.`;
+  return new Chart('c1',{type:'bar',data:{labels:MON,datasets:[{label:daily?'하루 평균 건수':'합계 건수',data:vals,backgroundColor:vals.map(v=>fire(v/mx)),borderRadius:2}]},
+    options:opts({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>daily?`하루 평균 ${c.raw.toFixed(2)}건`:`${c.raw.toLocaleString()}건 (${(c.raw/TOT*100).toFixed(1)}%)`}}}})});
+}
+// ② 연도별 합계 + 가뭄/피해면적
+const DROUGHT={2006:43,2007:51,2008:121,2009:100,2010:32,2011:46,2012:47,2013:26,2014:124,2015:168,2016:56,2017:135,2018:24,2019:122,2020:5,2021:45,2022:157,2023:31.4,2024:3.3};
+const AREA={2006:254,2007:230,2008:227,2009:1381,2010:297,2011:1090,2012:72,2013:552,2014:137,2015:418,2016:378,2017:1480,2018:894,2019:3255,2020:2920,2021:766,2022:24797,2023:4992,2024:132,2025:105099};
+function corr(a,b){const n=a.length,ma=sum(a)/n,mb=sum(b)/n;let x=0,y=0,z=0;for(let i=0;i<n;i++){x+=(a[i]-ma)*(b[i]-mb);y+=(a[i]-ma)**2;z+=(b[i]-mb)**2;}return x/Math.sqrt(y*z);}
+function c2(){
+  const avg=TOT/NY, mode=state.m2, ember=css('--ember'), cool=css('--cool');
+  const idx=D.years.map((y,i)=>i).filter(i=>DROUGHT[D.years[i]]!=null);
+  const r=corr(idx.map(i=>YT[i]),idx.map(i=>DROUGHT[D.years[i]]));
+  const hi=idx.filter(i=>DROUGHT[D.years[i]]>=100), lo=idx.filter(i=>DROUGHT[D.years[i]]<100);
+  const mh=sum(hi.map(i=>YT[i]))/hi.length, ml=sum(lo.map(i=>YT[i]))/lo.length;
+  const rA=corr(D.years.map((y,i)=>YT[i]),D.years.map(y=>Math.log10(AREA[y])));
+  const rAD=corr(idx.map(i=>Math.log10(AREA[D.years[i]])),idx.map(i=>DROUGHT[D.years[i]]));
+  const T={
+    none:`가장 많았던 해는 <b>${D.years[mxY]}년(${YT[mxY]}건)</b>, 가장 적었던 해는 ${D.years[mnY]}년(${YT[mnY]}건)으로 약 ${(YT[mxY]/YT[mnY]).toFixed(1)}배 차이입니다. 2014년 이후로는 평균(${avg.toFixed(0)}건)을 넘는 해가 많아졌지만, 2021년과 2024년처럼 크게 줄어든 해도 있어 해마다 변동이 큽니다.`,
+    drought:`기상가뭄 일수가 100일 이상이었던 ${hi.length}개 해(${hi.map(i=>D.years[i]).join('·')})의 산불은 평균 <b>${mh.toFixed(0)}건</b>으로, 나머지 ${lo.length}개 해의 평균 ${ml.toFixed(0)}건보다 약 ${(mh/ml).toFixed(1)}배 많았습니다. 두 값의 상관계수는 r = ${r.toFixed(2)}로 양의 관계가 뚜렷합니다. 다만 2020년(가뭄 5일, 620건)처럼 가뭄이 거의 없어도 산불이 많은 해가 있고, 2008년(가뭄 121일, 389건)처럼 가뭄이 길어도 산불이 평균보다 적은 해도 있어, 가뭄은 산불을 늘리는 <b>배경 조건</b>이지 유일한 원인은 아닙니다. 2025년은 같은 방식의 가뭄 일수가 공개되지 않아 빠져 있습니다.`,
+    area:`피해면적은 건수와 전혀 다르게 움직입니다. 2024년은 ${AREA[2024]}ha였지만 2025년은 ${AREA[2025].toLocaleString()}ha로 약 800배입니다. 산불 한 건당 피해면적은 대부분의 해에 1ha 안팎인데, 2022년은 ${(AREA[2022]/YT[16]).toFixed(1)}ha, 2025년은 <b>${(AREA[2025]/YT[19]).toFixed(0)}ha</b>였습니다. 연간 가뭄 일수와 피해면적(로그)의 상관은 r = ${rAD.toFixed(2)}로 약합니다. 대형 피해는 긴 가뭄보다 불이 난 며칠 동안의 <b>강풍·고온·극건조</b>에 좌우됩니다(⑥의 2025년 사례).`
+  };
+  document.getElementById('t2').innerHTML=T[mode];
+  const ds=[{type:'bar',label:'발생건수',data:YT,backgroundColor:D.years.map(y=>mode==='drought'&&DROUGHT[y]>=100?ember:css('--muted')),borderRadius:2,yAxisID:'y',order:2},
+            {type:'line',label:'20년 평균',data:D.years.map(()=>avg),borderColor:css('--ink'),borderDash:[5,4],borderWidth:1.2,pointRadius:0,yAxisID:'y',order:1}];
+  const scales={x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:css('--faint')},title:{display:true,text:'발생건수'}}};
+  if(mode==='drought'){ ds.push({type:'line',label:'기상가뭄 일수',data:D.years.map(y=>DROUGHT[y]??null),borderColor:cool,backgroundColor:cool,pointRadius:3,yAxisID:'y1',order:0,spanGaps:false});
+    scales.y1={position:'right',beginAtZero:true,max:200,grid:{display:false},title:{display:true,text:'기상가뭄 일수(일)'}}; }
+  if(mode==='area'){ ds.push({type:'line',label:'피해면적(ha)',data:D.years.map(y=>AREA[y]),borderColor:cool,backgroundColor:cool,pointRadius:3,yAxisID:'y1',order:0});
+    scales.y1={type:'logarithmic',position:'right',min:50,max:200000,grid:{display:false},title:{display:true,text:'피해면적(ha, 로그 눈금)'}}; }
+  return new Chart('c2',{data:{labels:D.years,datasets:ds},
+    options:opts({scales,plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>{const v=c.raw;if(v==null)return `${c.dataset.label}: 자료 없음`;return c.dataset.label==='피해면적(ha)'?`피해면적 ${v.toLocaleString()}ha`:c.dataset.label==='기상가뭄 일수'?`기상가뭄 ${v}일`:`${c.dataset.label}: ${Math.round(v)}건`;}}}}})});
+}
+// ③ 월×원인
+function c3(){
+  const pct=state.m3==='pct';
+  return new Chart('c3',{type:'bar',data:{labels:MON,datasets:D.causes.map((c,ci)=>({label:c,backgroundColor:COLORS[ci],
+      data:MON.map((_,m)=>pct? MC[m][ci]/MT[m]*100 : MC[m][ci])}))},
+    options:opts({scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,max:pct?100:undefined,grid:{color:css('--faint')},title:{display:true,text:pct?'월 안에서 비율(%)':'건수'}}},
+      plugins:{legend:{position:'bottom',labels:{boxWidth:12}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${pct?c.raw.toFixed(1)+'%':c.raw+'건'}`}}}})});
+}
+// ④ 정렬 + 누적
+function c4(){
+  let idx=MON.map((_,i)=>i); if(state.m4==='desc') idx.sort((a,b)=>MT[b]-MT[a]);
+  let acc=0; const cum=idx.map(i=>(acc+=MT[i])/TOT*100);
+  const sorted=[...MON.keys()].sort((a,b)=>MT[b]-MT[a]);
+  let a2=0,n70=0; for(const i of sorted){a2+=MT[i];n70++; if(a2/TOT>=0.7) break;}
+  document.getElementById('t4').innerHTML=`순위: ${sorted.map((i,r)=>`${r+1}위 ${i+1}월`).slice(0,6).join(', ')} … 12위 ${sorted[11]+1}월. 상위 <b>${n70}개월(${sorted.slice(0,n70).map(i=>i+1+'월').join('·')})이 전체의 ${(a2/TOT*100).toFixed(1)}%</b>를 차지합니다. 1년 중 3분의 1 기간에 산불의 70%가 몰린다는 뜻이라, 감시 자원을 이 시기에 집중하는 것이 효율적입니다.`;
+  const lab=idx.map(i=>state.m4==='desc'?`${sorted.indexOf(i)+1}위 ${i+1}월`:MON[i]);
+  return new Chart('c4',{data:{labels:lab,datasets:[
+      {type:'bar',label:'합계 건수',data:idx.map(i=>MT[i]),backgroundColor:idx.map(i=>fire(MT[i]/MT[2])),borderRadius:2,yAxisID:'y',order:2},
+      {type:'line',label:'누적 비율(%)',data:cum,borderColor:css('--ember'),backgroundColor:css('--ember'),pointRadius:3,yAxisID:'y1',order:1,hidden:state.m4!=='desc'}]},
+    options:opts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:css('--faint')},title:{display:true,text:'건수'}},
+      y1:{position:'right',min:0,max:100,grid:{display:false},title:{display:true,text:'누적 비율(%)'},display:state.m4==='desc'}},
+      plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>c.dataset.yAxisID==='y1'?`누적 ${c.raw.toFixed(1)}%`:`${c.raw.toLocaleString()}건 (${(c.raw/TOT*100).toFixed(1)}%)`}}}})});
+}
+// ⑤ 원인별 변화
+let hidden5=D.causes.map(()=>false);
+function c5(){
+  const mode=state.m5;
+  const ds=D.causes.map((c,ci)=>{
+    let acc=0; const data=D.years.map((y,yi)=> MISSING(y,ci)&&mode!=='cum'? null : mode==='cum'?(acc+=YC[yi][ci]) : mode==='pct'? YC[yi][ci]/YT[yi]*100 : YC[yi][ci]);
+    return {label:c,data,borderColor:COLORS[ci],backgroundColor:COLORS[ci],borderWidth:ci<2?2.6:1.8,pointRadius:2,tension:.25,hidden:hidden5[ci]};
+  });
+  const ch=new Chart('c5',{type:'line',data:{labels:D.years,datasets:ds},
+    options:opts({interaction:{mode:'nearest',axis:'x',intersect:false},
+      scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:css('--faint')},title:{display:true,text:mode==='cum'?'누적 합계(건)':mode==='pct'?'연도 안에서 비율(%)':'건수'}}},
+      plugins:{legend:{position:'bottom',onClick:(e,item,leg)=>{hidden5[item.datasetIndex]=!hidden5[item.datasetIndex];Chart.defaults.plugins.legend.onClick.call(leg,e,item,leg);}},
+        tooltip:{callbacks:{label:c=>c.raw==null?`${c.dataset.label}: 자료 없음(결측)`:`${c.dataset.label}: ${mode==='pct'?c.raw.toFixed(1)+'%':c.raw.toLocaleString()+'건'}`}}}})});
+  return ch;
+}
+
+// ⑥ 사례
+const yi=y=>y-2006;
+const CASES=[
+ {y:2025,m:[3],lv:'ok',src:[5,13,3],t:'2025년 3월: 월 평균은 평범했지만 6일이 극단적이었다',
+  f:()=>`3월 ${YM[yi(2025)][2]}건. 피해면적은 연간 105,099ha로 20년 중 최대이고, 산불 한 건당 약 229ha가 탔습니다(보통 해는 1ha 안팎).`,
+  cl:'3월 전체 강수량은 평년의 89%로 크게 부족하지 않았습니다. 하지만 대형산불이 번진 3월 21~26일에는 전국 평균기온이 14.2℃로 평년보다 7.1℃ 높았고, 강수량은 0.2mm, 습도는 평년보다 15%p 낮았습니다. 3월 25일 안동 하회에서는 순간풍속 27.6m/s가 관측됐습니다. 월 평균이 아니라 불이 난 며칠의 날씨가 피해 규모를 결정한 사례입니다.',
+  hu:'의성 산불은 성묘객이 묘지를 정리하다 낸 불에서 시작됐습니다. 이 한 건이 강풍을 타고 안동·청송·영양·영덕까지 번졌습니다. 건수 통계에서는 1건일 뿐이라는 점이 건수 지표의 한계를 보여 줍니다.'},
+ {y:2022,m:[2,5],lv:'ok',src:[11,4,2,3],t:'2022년: 역대 가장 메마른 겨울, 20년 중 최다 산불',
+  f:()=>`연간 ${YT[yi(2022)]}건(20년 최다), 피해 24,797ha. 기상가뭄 157일(20년 중 2위).`,
+  cl:'2021년 12월~2022년 2월 전국 강수량은 13.3mm로 평년의 14.7%에 그쳐 1973년 이후 가장 적었습니다. 가뭄이 겨울부터 봄 내내 이어져 산불이 한 달에 몰리지 않고 2~5월 전체로 퍼졌습니다. 3월 울진·삼척 산불은 최대풍속 약 27m/s 속에 16,302ha를 태웠습니다.',
+  hu:'기타 원인이 282건으로 20년 중 가장 많았습니다. 불씨의 종류보다 불이 잘 붙는 조건이 전국적으로 만들어진 해였다고 볼 수 있습니다.'},
+ {y:2015,m:[3,9],lv:'ok',src:[4,6],t:'2015년: 20년 중 가장 긴 가뭄',
+  f:()=>`3월 ${YM[yi(2015)][2]}건(20년 월 최다), 9월 ${YM[yi(2015)][8]}건(9월 평균 ${(MT[8]/NY).toFixed(1)}건의 약 6배). 기상가뭄 168일(20년 최장).`,
+  cl:'3월 전국 강수량은 40.5mm, 비 온 날은 5.1일, 기온은 평년보다 0.8℃ 높았습니다. 가뭄은 가을까지 이어져 9월 충남 강수량은 평년의 13%, 충북은 20%에 그쳤습니다(지역 값).',
+  hu:'3월 산불의 절반 가까이(논밭두렁 60건, 쓰레기 60건)가 소각 때문이었습니다. 건조한 날씨와 영농 준비 소각이 겹친 전형적인 사례입니다.'},
+ {y:2018,m:[7,8],lv:'ok',src:[7],t:'2018년 여름: 관측 이래 가장 더운 여름',
+  f:()=>`8월 ${YM[yi(2018)][7]}건(그해의 ${SH[yi(2018)][7].toFixed(1)}%, 평균 ${MU[7].toFixed(1)}%). 20년 중 여름 산불 최다.`,
+  cl:'장마가 7월 11일에 끝나 1973년 이후 가장 짧았고, 8월 전국 평균기온은 27.3℃로 역대 최고였습니다. 폭염일수는 31.4일로 평년(9.8일)의 3배가 넘었습니다. 여름에 산불이 드문 이유인 비와 높은 습도가 사라진 셈입니다.',
+  hu:'8월 산불 중 입산자 실화가 21건으로 가장 많았습니다. 휴가철 산·계곡 방문과 건조한 연료가 겹쳤습니다.'},
+ {y:2019,m:[1],lv:'ok',src:[9],t:'2019년 1월: 장기 가뭄 없이 한 달만 극도로 건조했다',
+  f:()=>`1월 ${YM[yi(2019)][0]}건(그해의 ${SH[yi(2019)][0].toFixed(1)}%, 평균 ${MU[0].toFixed(1)}%). 20년 중 1월 최다.`,
+  cl:'1월 전국 강수량은 8.1mm로 1973년 이후 다섯 번째로 적었고, 서울은 1907년 관측 이래 처음으로 1월 강수량 0mm를 기록했습니다. 그런데 최근 6개월 누적 강수량은 평년 수준이라 장기 가뭄은 아니었습니다. 낙엽 같은 표면 연료는 몇 주만 건조해도 불이 잘 붙는다는 것을 보여 줍니다.',
+  hu:'기타가 51건으로 절반에 가까웠고, 쓰레기 소각과 입산자 실화가 각각 16건이었습니다.'},
+ {y:2023,m:[3],lv:'ok',src:[4,2,3],t:'2023년 3월: 남부의 긴 가뭄 위에 중부의 봄 가뭄',
+  f:()=>`3월 ${YM[yi(2023)][2]}건(20년 월 2위). 피해 4,992ha.`,
+  cl:'남부지방은 2022년부터 가뭄이 이어졌고, 중부지방도 2~4월 강수가 부족해 봄 가뭄이 났습니다. 4월 2일에는 하루에만 산불 35건이 동시다발로 발생했고 홍성(약 1,337ha), 금산·대전(약 889ha) 대형산불이 났습니다.',
+  hu:'3월에는 기타(67건)와 입산자 실화(61건)가 가장 많았습니다. 날씨가 풀리며 늘어난 입산 활동이 건조한 연료와 만난 경우입니다.'},
+ {y:2010,m:[3,11,12],lv:'part',src:[10,4],t:'2010년: 봄 산불이 사라진 해',
+  f:()=>`3월 ${YM[yi(2010)][2]}건(그해의 ${SH[yi(2010)][2].toFixed(1)}%, 평균 ${MU[2].toFixed(1)}%). 11~12월은 ${YM[yi(2010)][10]}·${YM[yi(2010)][11]}건으로 월평균의 약 1.8배.`,
+  cl:'3~4월에 이상저온과 일조 부족이 이어졌고, 호남 지방은 봄철 강수일수가 평년의 151%로 1973년 이후 가장 많았습니다(지역 값). 기상가뭄도 32일에 그쳤습니다. 습한 봄이 봄 산불을 크게 줄였습니다.',
+  hu:'11~12월은 비율뿐 아니라 건수 자체도 평소보다 많았는데, 이를 설명할 기상·사회 자료는 아직 찾지 못했습니다.'},
+ {y:2024,m:[],lv:'part',src:[12,4,3],t:'2024년: 비가 자주 온 해',
+  f:()=>`연간 ${YT[yi(2024)]}건(20년 중 3번째로 적음), 피해 132ha. 입산자 실화 49건으로 20년 최저.`,
+  cl:'비 온 날이 132일로 평년(115.7일)보다 16일 많았고, 기상가뭄은 3.3일로 20년 중 가장 짧았습니다.',
+  hu:'입산자 실화가 이렇게 크게 줄어든 것은 날씨만으로 설명하기 어렵습니다. 탐방객 수, 입산 통제, 예방 단속 같은 사회적 요인을 추가로 확인해야 합니다.'},
+ {y:2012,m:[5,6],lv:'part',src:[8],t:'2012년 5~6월: 비율이 높아 보인 이유',
+  f:()=>`5월 ${YM[yi(2012)][4]}건, 6월 ${YM[yi(2012)][5]}건. 그해 총 ${YT[yi(2012)]}건으로 20년 중 가장 적었습니다.`,
+  cl:'6월 전국 강수량은 74.7mm로 평년의 절반이었고 기온도 높아, 6월 산불(평균 25.8건)이 늘어난 것은 설명됩니다.',
+  hu:'5월 54건은 평균(41.6건)의 1.3배 정도입니다. 5월 비율이 27%로 높아 보인 가장 큰 이유는 3월(23건)과 4월(45건) 산불이 매우 적어 분모가 작았기 때문입니다. 비율 지표를 해석할 때 주의해야 할 좋은 예입니다.'},
+ {y:2018,m:[2],lv:'human',src:[4,2],t:'2018년 2월: 날씨보다 사람의 달력',
+  f:()=>`2월 ${YM[yi(2018)][1]}건(그해의 ${SH[yi(2018)][1].toFixed(1)}%, 평균 ${MU[1].toFixed(1)}%). 2007년 2월(${YM[yi(2007)][1]}건)도 비슷한 경우입니다.`,
+  cl:'2018년 기상가뭄은 24일로 짧았고 2월에는 한파가 이어졌습니다. 전국적인 가뭄으로 설명하기 어렵습니다. 2007년 2월은 기상 자료를 찾지 못했습니다.',
+  hu:'2월 성묘객 실화가 11건으로 20년 중 가장 많았습니다(설날이 2월 16일). 데이터를 보면 설날이 2월에 있는 해는 2월 성묘객 실화가 평균 4.4건, 1월에 있는 해는 1.8건입니다. 건축물 화재도 13건이었는데, 2월 삼척 산림 인접 펜션 화재가 161ha 산불로 번진 사례가 있습니다.'}
+];
+const LV={ok:['기상 자료로 확인됨','#3f6e8c'],part:['일부만 설명됨','#8a6d1f'],human:['인위적 요인 중심','#b8321f']};
+const caseKey={}; CASES.forEach((c,i)=>c.m.forEach(m=>caseKey[c.y+'-'+m]=i));
+document.getElementById('cases').innerHTML=CASES.map((c,i)=>`<article class="case" id="case${i}"><span class="badge" style="border-color:${LV[c.lv][1]};color:${LV[c.lv][1]}">${LV[c.lv][0]}</span><h3>${c.t}</h3><p class="fact">${c.f()}</p>
+  <div class="k cl">기후적 요소</div><p>${c.cl}</p><div class="k hu">인위적 요소</div><p>${c.hu}</p><p class="ref">근거: ${c.src.map(n=>`<a href="#ref${n}">[${n}]</a>`).join(' ')}</p></article>`).join('');
+
+function heat(){
+  const el=document.getElementById('hm'); let h='<div class="h"></div>'+MON.map(m=>`<div class="h">${m}</div>`).join('');
+  D.years.forEach((y,yi)=>{ h+=`<div class="h">${y}</div>`;
+    MON.forEach((_,m)=>{ const d=SH[yi][m]-MU[m], t=Math.max(-1,Math.min(1,d/15));
+      const col=t>=0?mix('#f3f1ea','#b8321f',t):mix('#f3f1ea','#3f6e8c',-t);
+      const k=caseKey[y+'-'+(m+1)]!==undefined;
+      h+=`<div class="c" tabindex="0" role="button" data-y="${yi}" data-m="${m}" style="background:${col};color:${Math.abs(t)>.55?'#fff':'#1f221e'};${k?'box-shadow:inset 0 0 0 2px #1f221e':''}" aria-label="${y}년 ${m+1}월 비율 ${SH[yi][m].toFixed(1)}%">${d>0?'+':''}${d.toFixed(0)}</div>`; });
+  });
+  el.innerHTML=h;
+}
+function mix(a,b,t){const A=parseInt(a.slice(1),16),B=parseInt(b.slice(1),16),c=q=>Math.round(((A>>q)&255)*(1-t)+((B>>q)&255)*t);return `rgb(${c(16)},${c(8)},${c(0)})`;}
+function pick(cell){
+  document.querySelectorAll('.hm .c.sel').forEach(c=>c.classList.remove('sel')); cell.classList.add('sel');
+  const yi=+cell.dataset.y, m=+cell.dataset.m, y=D.years[yi];
+  const top=D.causes.map((n,c)=>[n,D.v[yi][m][c]]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>`${x[0]} ${x[1]}건`).join(', ');
+  const k=caseKey[y+'-'+(m+1)];
+  document.getElementById('cellinfo').innerHTML=`<b>${y}년 ${m+1}월</b>: ${YM[yi][m]}건, 그해 산불의 ${SH[yi][m].toFixed(1)}% (20년 평균 ${MU[m].toFixed(1)}%). 주요 원인: ${top||'없음'}${k!==undefined?` · <a href="#case${k}">분석 카드 보기</a>`:''}`;
+  document.querySelectorAll('.case').forEach(c=>c.classList.remove('hl')); if(k!==undefined) document.getElementById('case'+k).classList.add('hl');
+}
+document.getElementById('hm').addEventListener('click',e=>{const c=e.target.closest('.c'); if(c) pick(c);});
+document.getElementById('hm').addEventListener('keydown',e=>{const c=e.target.closest('.c'); if(c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();pick(c);}});
+
+// 렌더
+const makers={c1,c2,c3,c4,c5};
+function renderAll(){ charts.forEach(c=>c.destroy()); charts=Object.values(makers).map(f=>f()); }
+document.querySelectorAll('.bar[data-grp]').forEach(g=>g.addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return; const k=g.dataset.grp; state[k]=b.dataset.v;
+  g.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  const i={m1:0,m2:1,m3:2,m4:3,m5:4}[k]; charts[i].destroy(); charts[i]=makers['c'+(i+1)]();
+}));
+heat();
+// ================= 직접 탐색기 =================
+(function(){
+const DIMS={
+  '연도':{type:'ord',vals:D.years.slice(),lab:v=>v+'년',short:v=>String(v)},
+  '월':{type:'cyc',vals:[1,2,3,4,5,6,7,8,9,10,11,12],lab:v=>v+'월',short:v=>v+'월'},
+  '원인':{type:'nom',vals:D.causes.map((_,i)=>i),lab:v=>D.causes[v],short:v=>D.causes[v]}
+};
+const NAMES=['연도','월','원인'];
+const CH={bar:'막대',line:'선',polar:'원형(극좌표)',stack:'누적막대',lines:'다중선',heat:'히트맵',hbar:'가로막대',donut:'도넛',surface:'곡면',bar3d:'3D 막대'};
+const X={dim:2,x:'월',s:'원인',chart:'lines',val:'raw',
+  inc:{'연도':[2006,2025],'월':new Set(DIMS['월'].vals),'원인':new Set(DIMS['원인'].vals)},
+  agg:{'연도':'sum','월':'sum','원인':'sum'}};
+const $=id=>document.getElementById(id);
+const isOrd=d=>d&&DIMS[d].type!=='nom';
+let shown=false;
+
+// ---------- 규칙
+function allowedCharts(){
+  if(X.dim===3){ return (X.x==='원인'||X.s==='원인')?['bar3d']:['surface','bar3d']; }
+  if(isOrd(X.x)){
+    if(!X.s) return X.x==='월'?['bar','line','polar']:['bar','line'];
+    if(X.s==='원인') return ['stack','lines','heat'];
+    return ['heat','lines'];
+  }
+  return X.s?['stack','heat']:['hbar','donut'];
+}
+function defaultChart(){
+  if(X.dim===3) return allowedCharts()[0];
+  if(isOrd(X.x)){ if(!X.s) return 'bar'; if(X.s==='원인') return X.x==='연도'?'stack':'lines'; return 'heat'; }
+  return X.s?'heat':'hbar';
+}
+const rest=()=>NAMES.filter(d=>d!==X.x&&d!==X.s);
+const hasAvg=()=>rest().some(d=>X.agg[d]==='avg');
+function valOptions(){
+  const o=[['raw','원값',true],['sht','전체 대비 %',!hasAvg()]];
+  o.push(['shx',`각 ${X.x} 안에서 %`,!!X.s]);
+  o.push(['shs',`각 ${X.s||'계열'} 안에서 %`,!!X.s]);
+  o.push(['log','로그 눈금',X.dim===2]);
+  return o;
+}
+function chartDisabled(c){
+  if(X.val==='log'&&(c==='stack'||c==='donut'||c==='polar')) return '로그 눈금에서는 쓸 수 없습니다';
+  if(c==='donut'&&(hasAvg()||X.val==='shx'||X.val==='shs')) return '도넛은 합계로 전체 중 비율을 볼 때만 씁니다';
+  return '';
+}
+function normalize(){
+  if(X.s===X.x) X.s=null;
+  if(X.dim===3&&!X.s) X.s=NAMES.find(d=>d!==X.x);
+  rest().forEach(d=>{ if(d==='원인'&&X.agg[d]==='avg') X.agg[d]='sum'; });
+  const vo=valOptions().find(v=>v[0]===X.val); if(!vo||!vo[2]) X.val='raw';
+  const al=allowedCharts();
+  if(!al.includes(X.chart)||chartDisabled(X.chart)) X.chart=al.includes(defaultChart())&&!chartDisabled(defaultChart())?defaultChart():al.find(c=>!chartDisabled(c));
+}
+
+// ---------- 집계
+const incVals=d=>d==='연도'?DIMS['연도'].vals.filter(y=>y>=X.inc['연도'][0]&&y<=X.inc['연도'][1]):DIMS[d].vals.filter(v=>X.inc[d].has(v));
+function cell(co){ // co: {연도,월,원인}
+  if(co['연도']===2022&&D.causes[co['원인']]==='어린이불장난') return null;
+  return D.v[co['연도']-2006][co['월']-1][co['원인']];
+}
+function product(dims){ let out=[{}]; dims.forEach(d=>{ const n=[]; incVals(d).forEach(v=>out.forEach(o=>n.push(Object.assign({},o,{[d]:v})))); out=n; }); return out; }
+function compute(){
+  const xs=incVals(X.x), ss=X.s?incVals(X.s):[null], R=rest();
+  const avgD=R.filter(d=>X.agg[d]==='avg'), sumD=R.filter(d=>X.agg[d]!=='avg');
+  const A=product(avgD), Sm=product(sumD); let missing=false;
+  const M=ss.map(sv=>xs.map(xv=>{
+    const vals=[];
+    A.forEach(a=>{ let s=0,any=false;
+      Sm.forEach(b=>{ const co=Object.assign({},a,b,{[X.x]:xv}); if(X.s) co[X.s]=sv; const v=cell(co); if(v==null){missing=true;} else {s+=v;any=true;} });
+      if(any) vals.push(s); });
+    if(!vals.length) return null;
+    return avgD.length? vals.reduce((p,q)=>p+q,0)/vals.length : vals[0];
+  }));
+  return {xs,ss,M,missing};
+}
+function transform(M){
+  const T=M.map(r=>r.slice());
+  if(X.val==='sht'){ const t=M.flat().filter(v=>v!=null).reduce((a,b)=>a+b,0)||1; return T.map(r=>r.map(v=>v==null?null:v/t*100)); }
+  if(X.val==='shx'){ const cs=M[0].map((_,j)=>M.reduce((a,r)=>a+(r[j]||0),0)); return T.map(r=>r.map((v,j)=>v==null?null:cs[j]?v/cs[j]*100:0)); }
+  if(X.val==='shs'){ return T.map(r=>{const t=r.reduce((a,b)=>a+(b||0),0); return r.map(v=>v==null?null:t?v/t*100:0);}); }
+  if(X.val==='log') return T.map(r=>r.map(v=>v==null||v<=0?null:v));
+  return T;
+}
+
+// ---------- 문구
+function restDesc(){
+  return rest().map(d=>{
+    const iv=incVals(d), all=iv.length===DIMS[d].vals.length, ag=X.agg[d]==='avg';
+    if(d==='연도'){ const r=`${X.inc['연도'][0]}–${X.inc['연도'][1]}년`; return ag?`${r} 연평균`:`${r} 합계`; }
+    if(d==='월'){ const r=all?'12개월':iv.length===1?`${iv[0]}월`:`${iv.length}개월`; return ag?`${r} 월평균`:`${r} 합계`; }
+    return all?'전체 원인':iv.length===1?D.causes[iv[0]]:`${D.causes[iv[0]]} 외 ${iv.length-1}개 원인`;
+  }).join(', ');
+}
+function unit(){ return X.val==='raw'||X.val==='log'?(hasAvg()?'건(평균)':'건'):'%'; }
+function fmt(v){ if(v==null) return '결측'; if(unit()==='%') return v.toFixed(1)+'%'; return (hasAvg()?v.toFixed(1):Math.round(v).toLocaleString())+'건'; }
+
+// ---------- 색
+const fireScale=[[0,'#fbe7a1'],[0.2,'#f6c064'],[0.45,'#ee8a3c'],[0.7,'#d64b2a'],[1,'#8f1d16']];
+function sColor(v,i,n){
+  if(X.s==='원인') return COLORS[v];
+  if(X.s==='월') return `hsl(${Math.round((v-1)/12*360+10)},55%,48%)`;
+  const t=n>1?i/(n-1):1; return `hsl(${Math.round(40-35*t)},${Math.round(65+15*t)}%,${Math.round(70-40*t)}%)`;
+}
+function baseLayout(){
+  const ink=css('--ink'), grid=css('--faint'), bg=css('--panel');
+  return {paper_bgcolor:bg,plot_bgcolor:bg,font:{family:'IBM Plex Sans KR, sans-serif',color:ink,size:12},
+    margin:{l:60,r:20,t:10,b:50},legend:{orientation:'h',y:-0.18},hoverlabel:{font:{family:'IBM Plex Sans KR, sans-serif'}},
+    xaxis:{gridcolor:grid,zerolinecolor:grid,automargin:true},yaxis:{gridcolor:grid,zerolinecolor:grid,automargin:true}};
+}
+
+// ---------- 그리기
+function render(){
+  if(!window.Plotly){ $('ex-plot').textContent='그래프 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 새로고침하세요.'; return; }
+  normalize(); syncControls();
+  const {xs,ss,M,missing}=compute(), T=transform(M);
+  const xl=xs.map(DIMS[X.x].short), sl=X.s?ss.map(DIMS[X.s].short):[];
+  const L=baseLayout(); let tr=[];
+  const hv=(i,j)=>`${X.s?sl[i]+' · ':''}${xl[j]}<br><b>${fmt(X.val==='log'?M[i][j]:T[i][j])}</b>${unit()==='%'&&M[i][j]!=null?` (${hasAvg()?M[i][j].toFixed(1):Math.round(M[i][j])}건)`:''}`;
+  const yTitle={raw:hasAvg()?'평균 건수':'건수',log:'건수 (로그 눈금)',sht:'전체 대비 비율(%)',shx:`각 ${X.x} 안에서 비율(%)`,shs:`각 ${X.s} 안에서 비율(%)`}[X.val];
+  const c=X.chart;
+  if(X.dim===2){
+    if(c==='bar'||c==='line'||c==='hbar'){
+      const v=T[0], mx=Math.max(...v.filter(q=>q!=null))||1;
+      const tt=v.map((_,j)=>hv(0,j));
+      if(c==='hbar'){ tr=[{type:'bar',orientation:'h',y:xl.slice().reverse(),x:v.slice().reverse(),text:tt.slice().reverse(),hovertemplate:'%{text}<extra></extra>',marker:{color:xs.slice().reverse().map(k=>COLORS[k])}}];
+        L.xaxis.title={text:yTitle}; L.margin.l=110; if(X.val==='log') L.xaxis.type='log'; }
+      else if(c==='bar'){ tr=[{type:'bar',x:xl,y:v,text:tt,hovertemplate:'%{text}<extra></extra>',textposition:'none',marker:{color:v.map(q=>q==null?css('--faint'):lerp(q/mx))}}]; }
+      else { tr=[{type:'scatter',mode:'lines+markers',x:xl,y:v,text:tt,hovertemplate:'%{text}<extra></extra>',line:{color:css('--ember'),width:2.5},marker:{size:6}}]; }
+      if(c!=='hbar'){ L.yaxis.title={text:yTitle}; if(X.val==='log') L.yaxis.type='log'; }
+    } else if(c==='polar'){
+      const v=T[0]; tr=[{type:'barpolar',r:v,theta:xl,text:v.map((_,j)=>hv(0,j)),hovertemplate:'%{text}<extra></extra>',marker:{color:v.map(q=>lerp(q/(Math.max(...v)||1))),line:{color:css('--panel'),width:1}}}];
+      L.polar={bgcolor:css('--panel'),angularaxis:{rotation:90,direction:'clockwise',gridcolor:css('--faint')},radialaxis:{gridcolor:css('--faint'),angle:90,tickfont:{size:10}}};
+    } else if(c==='stack'||c==='lines'){
+      tr=ss.map((sv,i)=>({type:c==='stack'?'bar':'scatter',mode:'lines+markers',name:sl[i],x:xl,y:T[i],text:T[i].map((_,j)=>hv(i,j)),hovertemplate:'%{text}<extra></extra>',
+        marker:{color:sColor(sv,i,ss.length),size:5},line:{color:sColor(sv,i,ss.length),width:ss.length>8?1.5:2.2},connectgaps:false}));
+      if(c==='stack') L.barmode='stack';
+      L.yaxis.title={text:yTitle}; if(X.val==='log') L.yaxis.type='log';
+      if(ss.length>8){ L.hovermode='closest'; }
+    } else if(c==='heat'){
+      const z=X.val==='log'?T.map(r=>r.map(v=>v==null?null:Math.log10(v))):T;
+      tr=[{type:'heatmap',x:xl,y:sl,z,text:T.map((r,i)=>r.map((_,j)=>hv(i,j))),hovertemplate:'%{text}<extra></extra>',colorscale:fireScale,xgap:2,ygap:2,
+        colorbar:{title:{text:X.val==='log'?'log₁₀(건수)':unit()==='%'?'%':'건수',side:'right'},thickness:12}}];
+      L.plot_bgcolor=css('--faint'); L.yaxis.autorange='reversed'; L.yaxis.type='category'; L.xaxis.type='category';
+      L.xaxis.showgrid=false; L.yaxis.showgrid=false; L.margin.l=X.s==='원인'?110:60;
+    } else if(c==='donut'){
+      tr=[{type:'pie',hole:.55,labels:xl,values:T[0],marker:{colors:xs.map(k=>COLORS[k]),line:{color:css('--panel'),width:2}},sort:false,direction:'clockwise',
+        textinfo:'percent',hovertemplate:'%{label}<br><b>%{value:,}</b> (%{percent})<extra></extra>'}];
+      L.showlegend=true; L.legend={orientation:'v',x:1,y:.5};
+    }
+  } else {
+    const xi=xs.map((_,j)=>j), yi=ss.map((_,i)=>i), ink=css('--ink'), grid=css('--grid')||css('--faint'), bg=css('--panel');
+    const ax=(t,vals,labs)=>({title:{text:t},tickvals:vals,ticktext:labs,gridcolor:css('--faint'),backgroundcolor:bg,showbackground:true,color:ink});
+    const step=a=>a.length>12?a.map((v,i)=>i%2?'':v):a;
+    L.scene={xaxis:ax(X.x,xi,step(xl)),yaxis:ax(X.s,yi,step(sl)),zaxis:{title:{text:yTitle},gridcolor:css('--faint'),backgroundcolor:bg,showbackground:true,color:ink},
+      camera:{eye:{x:1.6,y:-1.55,z:0.95}},aspectmode:'manual',aspectratio:{x:1.3,y:1.2,z:0.7}};
+    L.margin={l:0,r:0,t:0,b:0};
+    const zmax=Math.max(...T.flat().filter(v=>v!=null))||1;
+    if(c==='surface'){
+      tr=[{type:'surface',x:xi,y:yi,z:T,colorscale:fireScale,cmin:0,cmax:zmax,text:T.map((r,i)=>r.map((_,j)=>hv(i,j))),hovertemplate:'%{text}<extra></extra>',
+        contours:{z:{show:true,usecolormap:true,project:{z:true},width:1}},colorbar:{thickness:12,len:.6}}];
+    } else {
+      const byCause=X.s==='원인'||X.x==='원인';
+      const groups=byCause?(X.s==='원인'?yi.map(i=>({key:ss[i],cells:xi.map(j=>[i,j])})):xi.map(j=>({key:xs[j],cells:yi.map(i=>[i,j])}))):[{key:null,cells:yi.flatMap(i=>xi.map(j=>[i,j]))}];
+      groups.forEach(g=>{
+        const a={x:[],y:[],z:[],v:[],i:[],j:[],k:[]};
+        g.cells.forEach(([i,j])=>{ const h=T[i][j]; if(h==null||h<=0) return; box(a,j,i,h,0.66); });
+        const t={type:'mesh3d',x:a.x,y:a.y,z:a.z,i:a.i,j:a.j,k:a.k,flatshading:true,lighting:{ambient:.62,diffuse:.75,specular:.1},hoverinfo:'skip'};
+        if(g.key!=null){ t.color=COLORS[g.key]; t.name=D.causes[g.key]; t.showlegend=true; } else { t.intensity=a.v; t.colorscale=fireScale; t.cmin=0; t.cmax=zmax; t.colorbar={thickness:12,len:.6}; }
+        tr.push(t);
+      });
+      const hx=[],hy=[],hz=[],ht=[]; yi.forEach(i=>xi.forEach(j=>{ hx.push(j);hy.push(i);hz.push(T[i][j]??0);ht.push(hv(i,j)); }));
+      tr.push({type:'scatter3d',mode:'markers',x:hx,y:hy,z:hz,text:ht,hovertemplate:'%{text}<extra></extra>',marker:{size:3,opacity:0},showlegend:false});
+      L.legend={orientation:'h',y:1.02,x:0};
+    }
+  }
+  Plotly.react('ex-plot',tr,L,{responsive:true,displaylogo:false,modeBarButtonsToRemove:['lasso2d','select2d']});
+  // 제목·메모
+  $('ex-title').textContent=`${X.x}${X.s?' × '+X.s:''}별 산불 발생${unit()==='%'?' 비율':'건수'}`;
+  $('ex-meta').textContent=`${CH[c]} · ${restDesc()||'모든 값'}${X.x==='연도'||X.s==='연도'?'':''}`;
+  const notes=[];
+  if(missing) notes.push('<b>결측 포함</b>: 2022년 어린이불장난은 원자료에 항목이 없어 합계에서는 빠지고, 평균에서는 분모에서 제외했습니다.');
+  if(X.val==='log') notes.push('로그 눈금에서는 0건인 칸을 그릴 수 없어 비워 두었습니다.');
+  if(c==='lines'&&ss.length>8) notes.push('선이 많습니다. 범례 항목을 두 번 누르면 그 선만 남기고 볼 수 있습니다.');
+  if(X.dim===3) notes.push('드래그하면 회전, 스크롤하면 확대됩니다. 그래프에 마우스를 올리면 값이 나옵니다.');
+  if(unit()==='%'&&X.val!=='sht') notes.push('비율은 건수가 적은 칸에서 크게 흔들릴 수 있습니다. 괄호 안의 실제 건수를 함께 보세요.');
+  $('ex-notes').innerHTML=notes.join(' ');
+  writeHash();
+}
+function lerp(t){ t=Math.max(0,Math.min(1,t||0)); const s=fireScale.map(x=>x[1]); const k=t*(s.length-1),i=Math.min(s.length-2,Math.floor(k)),f=k-i;
+  const a=parseInt(s[i].slice(1),16),b=parseInt(s[i+1].slice(1),16),c=q=>Math.round(((a>>q)&255)*(1-f)+((b>>q)&255)*f); return `rgb(${c(16)},${c(8)},${c(0)})`; }
+function box(a,x,y,h,w){ const b=a.x.length,x0=x-w/2,x1=x+w/2,y0=y-w/2,y1=y+w/2;
+  [[x0,y0,0],[x1,y0,0],[x1,y1,0],[x0,y1,0],[x0,y0,h],[x1,y0,h],[x1,y1,h],[x0,y1,h]].forEach(p=>{a.x.push(p[0]);a.y.push(p[1]);a.z.push(p[2]);a.v.push(h);});
+  [[0,1,2],[0,2,3],[4,5,6],[4,6,7],[0,1,5],[0,5,4],[1,2,6],[1,6,5],[2,3,7],[2,7,6],[3,0,4],[3,4,7]].forEach(t=>{a.i.push(b+t[0]);a.j.push(b+t[1]);a.k.push(b+t[2]);}); }
+
+// ---------- 컨트롤
+function syncControls(){
+  $('ex-dim').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.v===X.dim));
+  $('ex-x').innerHTML=NAMES.map(d=>`<option ${d===X.x?'selected':''}>${d}</option>`).join('');
+  $('ex-slab').textContent=X.dim===3?'Y축':'계열(색)';
+  $('ex-s').innerHTML=(X.dim===2?[`<option value="" ${!X.s?'selected':''}>없음</option>`]:[]).concat(NAMES.filter(d=>d!==X.x).map(d=>`<option ${d===X.s?'selected':''}>${d}</option>`)).join('');
+  $('ex-chart').innerHTML=allowedCharts().map(c=>{const dis=chartDisabled(c);return `<button data-v="${c}" aria-pressed="${c===X.chart}" ${dis?`disabled title="${dis}"`:''}>${CH[c]}</button>`;}).join('');
+  $('ex-val').innerHTML=valOptions().map(([k,l,ok])=>`<button data-v="${k}" aria-pressed="${k===X.val}" ${ok?'':'disabled'}>${l}</button>`).join('');
+  $('ex-dims').innerHTML=NAMES.map(d=>{
+    const role=d===X.x?'X축':d===X.s?(X.dim===3?'Y축':'계열'):'남는 변수';
+    let body='';
+    if(d==='연도') body=`<div class="yr"><input type="range" min="2006" max="2025" value="${X.inc['연도'][0]}" data-yr="0" aria-label="시작 연도"><input type="range" min="2006" max="2025" value="${X.inc['연도'][1]}" data-yr="1" aria-label="끝 연도"><b style="white-space:nowrap">${X.inc['연도'][0]}–${X.inc['연도'][1]}</b></div>`;
+    else body=`<div class="mini">${DIMS[d].vals.map(v=>`<button data-d="${d}" data-v="${v}" aria-pressed="${X.inc[d].has(v)}">${DIMS[d].short(v)}</button>`).join('')}<button data-d="${d}" data-v="all">모두</button></div>`;
+    let agg='';
+    if(role==='남는 변수') agg=`<div class="aggsel">${['sum','avg'].map(k=>`<button data-agg="${d}" data-v="${k}" aria-pressed="${X.agg[d]===k}" ${k==='avg'&&d==='원인'?'disabled title="원인의 평균은 해석할 수 없는 값이라 막아 두었습니다"':''}${k==='avg'&&X.val==='sht'?'disabled':''}>${k==='sum'?'합계':d==='연도'?'연평균':d==='월'?'월평균':'평균'}</button>`).join('')}</div>`;
+    return `<div class="dimbox"><div class="dimhead"><b>${d}</b><span class="role ${role==='남는 변수'?'rest':''}">${role}</span></div>${body}${agg}</div>`;
+  }).join('');
+}
+function switchDim(n){
+  if(n===X.dim) return;
+  if(n===3&&!X.s) X.s=NAMES.find(d=>d!==X.x);
+  X.dim=n; X.chart='';
+}
+$('ex-dim').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; switchDim(+b.dataset.v); render();});
+$('ex-x').addEventListener('change',e=>{ const v=e.target.value; if(v===X.s) X.s=X.x; X.x=v; X.chart=''; render(); });
+$('ex-s').addEventListener('change',e=>{ X.s=e.target.value||null; X.chart=''; render(); });
+$('ex-chart').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b||b.disabled) return; X.chart=b.dataset.v; render();});
+$('ex-val').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b||b.disabled) return; X.val=b.dataset.v; render();});
+$('ex-dims').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b||b.disabled) return;
+  if(b.dataset.agg){ X.agg[b.dataset.agg]=b.dataset.v; render(); return; }
+  const d=b.dataset.d; if(!d) return;
+  if(b.dataset.v==='all'){ X.inc[d]=new Set(DIMS[d].vals); }
+  else { const v=+b.dataset.v, s=X.inc[d]; if(s.has(v)){ if(s.size>1) s.delete(v); } else s.add(v); }
+  render();});
+$('ex-dims').addEventListener('change',e=>{ const r=e.target.closest('input[data-yr]'); if(!r) return;
+  let [a,b]=X.inc['연도']; if(r.dataset.yr==='0') a=+r.value; else b=+r.value; if(a>b){ if(r.dataset.yr==='0') b=a; else a=b; }
+  X.inc['연도']=[a,b]; render(); });
+
+// ---------- 추천 보기
+const PRESETS=[
+  ['봄철 능선 (3D 곡면)',{dim:3,x:'월',s:'연도',chart:'surface',val:'raw'}],
+  ['원인마다 몰리는 달',{dim:2,x:'월',s:'원인',chart:'heat',val:'shs'}],
+  ['원인별 20년 추세',{dim:2,x:'연도',s:'원인',chart:'lines',val:'raw'}],
+  ['산불 달력 (원형)',{dim:2,x:'월',s:null,chart:'polar',val:'raw'}],
+  ['원인 비중',{dim:2,x:'원인',s:null,chart:'donut',val:'raw'}],
+  ['월 × 원인 3D',{dim:3,x:'월',s:'원인',chart:'bar3d',val:'raw'}]
+];
+$('ex-presets').innerHTML=PRESETS.map((p,i)=>`<button data-p="${i}">${p[0]}</button>`).join('');
+$('ex-presets').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; const p=PRESETS[+b.dataset.p][1];
+  Object.assign(X,p); X.inc={'연도':[2006,2025],'월':new Set(DIMS['월'].vals),'원인':new Set(DIMS['원인'].vals)}; X.agg={'연도':'sum','월':'sum','원인':'sum'}; render();});
+
+// ---------- 링크(주소에 설정 저장)
+const bits=(d)=>DIMS[d].vals.map(v=>X.inc[d].has(v)?'1':'0').join('');
+function writeHash(){
+  const p=new URLSearchParams({d:X.dim,x:X.x,s:X.s||'',c:X.chart,v:X.val,y:X.inc['연도'].join('-'),m:bits('월'),k:bits('원인'),a:NAMES.map(d=>X.agg[d]==='avg'?1:0).join('')});
+  const h='#explore?'+p.toString(); if(location.hash!==h) history.replaceState(null,'',h);
+  $('ex-link').value=location.href;
+}
+function readHash(){
+  const q=location.hash.split('?')[1]; if(!q) return;
+  const p=new URLSearchParams(q);
+  if(p.get('d')) X.dim=+p.get('d')===3?3:2;
+  if(NAMES.includes(p.get('x'))) X.x=p.get('x');
+  X.s=NAMES.includes(p.get('s'))?p.get('s'):null;
+  X.chart=p.get('c')||''; X.val=p.get('v')||'raw';
+  const y=(p.get('y')||'').split('-').map(Number); if(y.length===2&&y[0]>=2006&&y[1]<=2025&&y[0]<=y[1]) X.inc['연도']=y;
+  ['월','원인'].forEach((d,k)=>{ const b=p.get(k?'k':'m'); if(b&&b.length===DIMS[d].vals.length&&b.includes('1')) X.inc[d]=new Set(DIMS[d].vals.filter((_,i)=>b[i]==='1')); });
+  const a=p.get('a'); if(a&&a.length===3) NAMES.forEach((d,i)=>X.agg[d]=a[i]==='1'?'avg':'sum');
+}
+$('ex-copy').addEventListener('click',()=>{ const i=$('ex-link'); i.select(); let ok=false;
+  try{ if(navigator.clipboard){ navigator.clipboard.writeText(i.value).then(()=>{$('ex-copy').textContent='복사됨';setTimeout(()=>$('ex-copy').textContent='복사',1500);}).catch(()=>{}); ok=true; } }catch(_){}
+  if(!ok){ try{document.execCommand('copy'); $('ex-copy').textContent='복사됨';}catch(_){} } });
+
+window.EXPLORER={show(){ if(!shown){ readHash(); shown=true; } render(); }, rerender(){ if(shown&&!document.getElementById('view-explore').hidden) render(); }};
+})();
+
+// ---------- 화면 전환
+let storyDone=false;
+function route(){
+  const ex=location.hash.startsWith('#explore');
+  document.body.classList.toggle('explore',ex);
+  document.getElementById('view-story').hidden=ex; document.getElementById('view-explore').hidden=!ex;
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',(b.dataset.view==='explore')===ex));
+  if(ex){ window.EXPLORER.show(); }
+  else if(!storyDone){ storyDone=true;
+    if(window.Chart) renderAll(); else document.querySelectorAll('.chart').forEach(c=>c.textContent='그래프 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 새로고침하세요.'); }
+}
+document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.view==='explore'){ if(!location.hash.startsWith('#explore')) location.hash='explore'; }
+  else { history.pushState(null,'',location.pathname+location.search); route(); window.scrollTo(0,0); }});
+window.addEventListener('hashchange',route);
+route();
+function rethemeAll(){ if(storyDone&&window.Chart) renderAll(); window.EXPLORER.rerender(); heat(); }
+const mq=window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener&&mq.addEventListener('change',rethemeAll);
+new MutationObserver(rethemeAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+</script>
+</body>
+</html>

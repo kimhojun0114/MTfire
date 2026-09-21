@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>산불 달력 — 월별 산불 발생 인포그래픽</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eceee9; --panel:#f7f8f5; --ink:#1f221e; --muted:#62685f; --line:#c9cdc4; --ember:#b8321f; --faint:#dde0d8;
+  --spring:#e7b9a6; --summer:#b9cfbf; --autumn:#e2cf9e; --winter:#bcc7d6;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#171915; --panel:#20231f; --ink:#e7e9e3; --muted:#9aa196; --line:#373b34; --ember:#e0634a; --faint:#2c302a;
+  --spring:#6b3e33; --summer:#3b5244; --autumn:#5e5233; --winter:#3c4658; }}
+:root[data-theme="dark"]{ --bg:#171915; --panel:#20231f; --ink:#e7e9e3; --muted:#9aa196; --line:#373b34; --ember:#e0634a; --faint:#2c302a;
+  --spring:#6b3e33; --summer:#3b5244; --autumn:#5e5233; --winter:#3c4658; }
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;line-height:1.6}
+main{max-width:1120px;margin:0 auto;padding:40px 20px 56px}
+h1{font-size:clamp(1.7rem,3.6vw,2.5rem);line-height:1.2;margin:0 0 10px;letter-spacing:-0.01em}
+.lede{color:var(--muted);max-width:60ch;margin:0 0 28px}
+h2{font-size:1.3rem;margin:0 0 6px;line-height:1.3}
+.sub{color:var(--muted);font-size:.92rem;margin:0 0 16px;max-width:64ch}
+.card{background:var(--panel);border:1px solid var(--line);padding:22px}
+.controls{display:grid;gap:14px;margin-bottom:18px}
+.ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ctl-label{font-size:.85rem;color:var(--muted);min-width:4.5em}
+button{font:inherit;font-size:.85rem;background:transparent;color:var(--ink);border:1px solid var(--line);padding:5px 12px;cursor:pointer;border-radius:3px;display:inline-flex;align-items:center;gap:6px}
+button:hover{border-color:var(--ember)}
+button[aria-pressed="true"]{background:var(--ember);border-color:var(--ember);color:#fff}
+button.chip[aria-pressed="false"]{opacity:.5}
+button.chip[aria-pressed="true"]{background:transparent;color:var(--ink);border-color:var(--ink)}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+.range{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.range input{width:150px;accent-color:var(--ember)}
+.range output{font-weight:600;font-variant-numeric:tabular-nums;min-width:6.5em}
+.top{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:start}
+#radial{width:100%;height:auto;display:block;max-width:560px;margin:0 auto}
+#radial .wedge{cursor:pointer}
+#radial .wedge:focus{outline:none}
+#radial .wedge:focus-visible path{stroke:var(--ink);stroke-width:2}
+.detail h3{font-size:2.4rem;margin:0;line-height:1}
+.detail .rank{color:var(--muted);font-size:.9rem;margin:6px 0 16px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:18px}
+.stat{background:var(--panel);padding:10px 12px}
+.stat b{display:block;font-size:1.35rem;font-variant-numeric:tabular-nums;line-height:1.3}
+.stat span{font-size:.78rem;color:var(--muted)}
+.stat.on b{color:var(--ember)}
+.detail h4{font-size:.9rem;margin:0 0 6px}
+.detail .note{font-size:.82rem;color:var(--muted);margin:0 0 14px}
+.bars .r{display:grid;grid-template-columns:6.5em 1fr 3.2em;align-items:center;gap:8px;font-size:.82rem;margin:3px 0}
+.bars .track{height:10px;background:var(--faint)}
+.bars .fill{height:100%}
+.bars .n{text-align:right;font-variant-numeric:tabular-nums}
+section.cmp{margin-top:28px}
+.cmp-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:22px;align-items:start}
+#cmpchart{width:100%;height:auto;display:block}
+.qa p{margin:0 0 12px;font-size:.92rem}
+.qa p b{color:var(--ember)}
+.finding{border-left:3px solid var(--ember);padding:4px 0 4px 12px;margin:0 0 14px;font-size:.92rem}
+footer{color:var(--muted);font-size:.8rem;margin-top:24px}
+svg text{font-family:inherit;fill:var(--ink)}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--panel);font-size:.8rem;padding:4px 8px;border-radius:3px;opacity:0;transition:opacity .1s}
+@media (max-width:860px){.top,.cmp-grid{grid-template-columns:1fr}.card{padding:16px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<h1>산불 달력: 한 해 중 언제 불이 나는가</h1>
+<p class="lede">산림청 산불통계 20년치(2006~2025년)를 월별로 모았습니다. 시계처럼 12월이 맨 위, 3월이 오른쪽입니다. 막대를 누르면 그 달의 자세한 기록이 나옵니다.</p>
+
+<div class="card">
+  <div class="controls">
+    <div class="ctl-row" id="metrics" role="group" aria-label="보는 방식">
+      <span class="ctl-label">보는 방식</span>
+      <button data-m="sum" aria-pressed="true">합계 건수</button>
+      <button data-m="avg" aria-pressed="false">연평균 건수</button>
+      <button data-m="share" aria-pressed="false">비율(%)</button>
+      <button data-m="daily" aria-pressed="false">하루 평균</button>
+      <span style="width:10px"></span>
+      <button id="stackBtn" aria-pressed="false">원인별로 나눠 보기</button>
+    </div>
+    <div class="ctl-row range">
+      <span class="ctl-label">기간</span>
+      <input type="range" id="y0" min="2006" max="2025" value="2006" aria-label="시작 연도">
+      <input type="range" id="y1" min="2006" max="2025" value="2025" aria-label="끝 연도">
+      <output id="yout">2006–2025</output>
+    </div>
+    <div class="ctl-row" id="chips" role="group" aria-label="원인">
+      <span class="ctl-label">원인</span>
+    </div>
+  </div>
+
+  <div class="top">
+    <svg id="radial" viewBox="0 0 560 560" role="img" aria-label="월별 산불 발생 원형 막대그래프"></svg>
+    <div class="detail" id="detail" aria-live="polite"></div>
+  </div>
+</div>
+
+<section class="cmp card">
+  <h2>건수로 볼까, 비율로 볼까</h2>
+  <p class="sub">같은 봄철(2~4월) 산불을 두 가지로 셌습니다. 막대는 해마다 봄에 난 산불 건수, 선은 그해 전체 산불 중 봄에 난 비율입니다. 위에서 고른 기간과 원인이 그대로 적용됩니다.</p>
+  <div class="cmp-grid">
+    <svg id="cmpchart" viewBox="0 0 640 320" role="img" aria-label="연도별 봄철 산불 건수와 비율"></svg>
+    <div class="qa">
+      <div class="finding" id="finding"></div>
+      <p><b>건수</b>는 "얼마나 많이 대비해야 하나"에 답합니다. 순찰 드론 대수, 감시 인력 규모처럼 자원의 양을 정할 때 필요합니다. 대신 산불이 많았던 해의 영향을 크게 받습니다.</p>
+      <p><b>비율</b>은 "언제 대비해야 하나"에 답합니다. 그해 산불이 많든 적든 한 해 안에서의 분포만 보기 때문에, 해마다 반복되는 시기 패턴을 비교할 수 있습니다. 대신 산불이 적은 해에는 몇 건 차이로도 비율이 크게 흔들립니다.</p>
+      <p><b>하루 평균</b>은 달마다 날짜 수가 다른 점을 보정합니다. 2월은 28일뿐이라 합계로는 손해를 보는데, 하루 평균으로 보면 1월보다 훨씬 위험한 달입니다.</p>
+    </div>
+  </div>
+</section>
+
+<footer>출처: 산림청 「산불통계」 월별·원인별 발생건수(KOSIS, TX_13625_A003), 단위: 건. 원본의 '-'는 0건으로 처리했습니다. 2022년에는 '어린이불장난' 항목이 집계되지 않아 0건으로 계산했습니다. 2월의 날짜 수는 윤년을 반영해 28.25일로 계산했습니다.</footer>
+</main>
+<div class="tip" id="tip"></div>
+
+<script>
+const D = {"years": [2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025], "causes": ["입산자실화", "기타", "논밭두렁등소각", "쓰레기소각", "담뱃불실화", "건축물화재", "성묘객실화", "어린이불장난"], "v": [[[23, 11, 3, 3, 4, 1, 1, 2], [15, 2, 15, 2, 4, 0, 0, 3], [73, 19, 39, 19, 12, 2, 4, 7], [24, 10, 4, 6, 3, 1, 0, 1], [17, 5, 0, 2, 2, 0, 1, 0], [0, 0, 0, 1, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [4, 1, 0, 0, 0, 0, 2, 0], [13, 3, 2, 1, 1, 1, 4, 0], [11, 6, 0, 5, 0, 0, 0, 1], [5, 3, 0, 1, 0, 0, 0, 0]], [[24, 11, 9, 3, 11, 0, 3, 0], [48, 12, 32, 7, 10, 1, 7, 5], [23, 4, 28, 4, 8, 0, 1, 2], [62, 9, 17, 5, 4, 1, 12, 0], [7, 2, 1, 0, 1, 0, 0, 0], [10, 1, 5, 2, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0, 0, 0], [15, 3, 0, 0, 2, 0, 0, 0], [3, 1, 0, 0, 1, 0, 0, 0]], [[3, 0, 1, 0, 2, 1, 0, 0], [5, 13, 8, 8, 24, 2, 9, 1], [20, 14, 19, 12, 14, 1, 3, 2], [35, 6, 13, 13, 4, 2, 5, 1], [25, 0, 2, 2, 1, 0, 1, 1], [2, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 2, 0], [5, 1, 1, 1, 1, 0, 4, 0], [14, 1, 8, 1, 1, 0, 0, 0], [29, 4, 4, 4, 2, 1, 1, 0], [10, 6, 6, 3, 0, 2, 1, 1]], [[26, 9, 6, 8, 6, 4, 4, 1], [7, 6, 9, 3, 1, 3, 1, 2], [31, 14, 36, 22, 7, 1, 6, 2], [85, 36, 28, 22, 13, 5, 16, 1], [33, 9, 5, 3, 1, 0, 1, 0], [9, 4, 3, 0, 0, 0, 1, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [5, 1, 1, 0, 2, 0, 4, 0], [10, 4, 3, 2, 0, 1, 3, 0], [9, 6, 2, 4, 2, 0, 0, 0], [7, 7, 1, 3, 2, 1, 0, 0]], [[11, 3, 0, 2, 3, 1, 4, 0], [6, 4, 6, 7, 4, 3, 0, 0], [5, 0, 6, 7, 0, 1, 2, 1], [12, 2, 18, 8, 3, 1, 7, 0], [32, 5, 4, 0, 1, 2, 1, 0], [11, 2, 3, 2, 1, 2, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [3, 2, 0, 0, 0, 0, 0, 0], [31, 8, 0, 4, 1, 0, 0, 0], [27, 3, 1, 4, 0, 4, 1, 0]], [[19, 4, 4, 2, 1, 3, 0, 0], [16, 1, 9, 5, 1, 2, 5, 1], [29, 8, 23, 22, 6, 4, 1, 1], [30, 7, 27, 8, 0, 2, 5, 1], [3, 1, 1, 1, 0, 0, 0, 0], [7, 1, 1, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [2, 2, 0, 0, 2, 0, 0, 0], [2, 0, 1, 0, 2, 0, 0, 0], [2, 1, 0, 1, 0, 0, 0, 0]], [[4, 1, 0, 0, 0, 1, 0, 0], [3, 0, 3, 0, 0, 1, 2, 0], [5, 2, 8, 2, 0, 4, 1, 1], [18, 4, 3, 6, 8, 1, 3, 2], [26, 24, 1, 3, 0, 0, 0, 0], [13, 18, 3, 0, 0, 0, 1, 0], [0, 0, 0, 0, 0, 0, 0, 0], [2, 1, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0, 0], [10, 3, 0, 1, 0, 0, 0, 0], [5, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0]], [[0, 2, 2, 1, 1, 1, 0, 0], [2, 7, 14, 3, 1, 1, 0, 2], [11, 15, 43, 26, 10, 1, 5, 2], [28, 10, 14, 7, 5, 2, 3, 0], [26, 0, 2, 1, 1, 0, 0, 0], [2, 3, 1, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [4, 2, 0, 0, 1, 0, 0, 0], [1, 0, 0, 2, 0, 0, 0, 0], [6, 3, 0, 0, 1, 0, 1, 0], [5, 3, 0, 0, 1, 0, 0, 0], [6, 2, 1, 1, 1, 0, 0, 0]], [[12, 11, 8, 9, 4, 0, 5, 0], [14, 5, 19, 7, 2, 3, 2, 2], [26, 21, 32, 17, 3, 1, 1, 0], [85, 22, 25, 19, 10, 4, 1, 0], [29, 10, 7, 8, 1, 0, 0, 0], [7, 2, 1, 2, 1, 0, 0, 0], [7, 2, 1, 1, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [2, 0, 0, 1, 1, 0, 0, 0], [7, 3, 3, 2, 1, 0, 0, 0], [7, 6, 2, 1, 2, 1, 0, 0], [2, 0, 0, 1, 1, 0, 0, 0]], [[8, 7, 1, 0, 0, 0, 0, 0], [10, 14, 7, 4, 0, 1, 2, 2], [37, 71, 60, 60, 10, 6, 7, 1], [18, 18, 5, 3, 0, 3, 2, 0], [39, 21, 9, 3, 3, 0, 0, 1], [28, 35, 9, 11, 3, 2, 0, 0], [3, 0, 0, 0, 1, 0, 0, 0], [5, 2, 0, 0, 1, 0, 0, 0], [16, 3, 4, 2, 0, 0, 8, 0], [21, 11, 3, 2, 3, 0, 0, 1], [5, 2, 1, 0, 0, 0, 0, 0], [3, 2, 0, 1, 1, 1, 0, 0]], [[9, 5, 4, 11, 1, 5, 0, 1], [11, 16, 9, 19, 3, 1, 3, 0], [18, 17, 41, 28, 8, 0, 4, 0], [27, 14, 16, 15, 2, 5, 7, 0], [10, 6, 3, 2, 0, 0, 0, 0], [15, 4, 4, 4, 0, 1, 0, 0], [1, 0, 0, 0, 0, 0, 0, 0], [4, 7, 0, 1, 0, 0, 2, 0], [3, 0, 0, 0, 0, 0, 2, 0], [0, 1, 0, 0, 0, 0, 0, 0], [2, 6, 1, 0, 0, 0, 0, 0], [7, 3, 1, 0, 0, 1, 0, 0]], [[6, 6, 2, 6, 0, 1, 0, 0], [17, 14, 7, 12, 1, 2, 2, 1], [39, 36, 51, 32, 7, 17, 9, 1], [50, 23, 12, 23, 5, 3, 6, 0], [59, 17, 10, 11, 4, 3, 0, 0], [45, 21, 7, 7, 3, 2, 1, 0], [0, 3, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [3, 0, 0, 1, 0, 0, 0, 0], [2, 1, 0, 1, 0, 0, 0, 0], [16, 16, 3, 12, 2, 0, 1, 0], [17, 13, 2, 5, 2, 8, 3, 0]], [[9, 6, 4, 3, 2, 5, 0, 0], [38, 32, 14, 16, 5, 13, 11, 1], [10, 19, 24, 13, 2, 11, 4, 0], [33, 16, 18, 9, 1, 5, 6, 0], [2, 0, 0, 0, 0, 0, 1, 0], [27, 10, 3, 3, 0, 2, 0, 0], [5, 8, 2, 0, 0, 0, 0, 0], [21, 15, 1, 4, 1, 1, 3, 0], [1, 2, 0, 0, 0, 0, 0, 0], [5, 2, 0, 0, 0, 1, 1, 0], [3, 7, 0, 3, 0, 0, 0, 0], [4, 16, 1, 7, 1, 3, 0, 0]], [[16, 51, 6, 16, 5, 7, 4, 1], [13, 11, 12, 5, 4, 13, 3, 0], [25, 43, 25, 31, 3, 12, 2, 0], [38, 47, 18, 22, 7, 11, 9, 0], [57, 30, 1, 6, 0, 2, 2, 1], [7, 2, 2, 1, 1, 2, 0, 0], [5, 4, 2, 1, 1, 2, 0, 0], [1, 2, 0, 0, 0, 1, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0], [3, 5, 0, 1, 0, 0, 0, 0], [6, 10, 0, 2, 0, 1, 0, 0], [7, 9, 3, 3, 1, 7, 0, 0]], [[8, 9, 1, 4, 5, 2, 0, 0], [11, 7, 6, 4, 6, 6, 1, 1], [54, 25, 20, 31, 22, 15, 4, 0], [64, 61, 12, 11, 18, 15, 3, 0], [8, 8, 1, 3, 4, 2, 0, 0], [11, 13, 4, 2, 5, 3, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0, 0], [2, 0, 0, 0, 0, 0, 0, 0], [25, 4, 1, 2, 3, 0, 0, 0], [22, 8, 2, 4, 4, 6, 0, 0], [12, 14, 2, 4, 8, 5, 1, 0]], [[14, 20, 0, 2, 6, 2, 0, 0], [22, 20, 7, 9, 9, 6, 8, 1], [10, 7, 11, 4, 6, 3, 3, 0], [52, 20, 4, 4, 8, 2, 4, 0], [9, 5, 0, 1, 1, 1, 1, 2], [0, 2, 0, 1, 0, 0, 0, 0], [3, 3, 0, 0, 0, 1, 0, 0], [4, 2, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [12, 7, 0, 2, 3, 0, 0, 0], [7, 8, 0, 3, 1, 5, 0, 0]], [[26, 36, 3, 10, 5, 6, 2, 0], [43, 52, 13, 11, 7, 12, 5, 0], [20, 31, 8, 6, 10, 6, 1, 0], [66, 63, 11, 20, 9, 8, 3, 0], [41, 48, 4, 4, 9, 7, 2, 0], [9, 9, 0, 1, 5, 1, 1, 0], [2, 1, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [5, 5, 0, 1, 0, 0, 0, 0], [10, 10, 1, 1, 2, 0, 0, 0], [16, 18, 3, 4, 4, 2, 0, 0], [15, 9, 1, 1, 2, 9, 0, 0]], [[10, 17, 3, 3, 1, 2, 2, 0], [21, 30, 19, 20, 9, 9, 6, 0], [61, 67, 25, 31, 24, 14, 7, 0], [39, 30, 5, 8, 15, 4, 6, 1], [16, 7, 2, 4, 3, 0, 1, 0], [5, 4, 0, 1, 1, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 1, 0, 1, 0], [8, 2, 0, 2, 1, 0, 0, 0], [6, 6, 1, 1, 0, 11, 0, 0], [4, 12, 1, 3, 1, 1, 0, 0]], [[3, 9, 1, 1, 2, 2, 0, 0], [1, 6, 2, 2, 0, 0, 0, 0], [6, 22, 11, 14, 13, 6, 2, 0], [22, 23, 5, 3, 12, 0, 1, 1], [6, 8, 2, 0, 1, 0, 0, 0], [3, 20, 0, 1, 1, 3, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [1, 3, 0, 1, 0, 0, 2, 0], [0, 4, 1, 0, 0, 0, 1, 0], [0, 1, 0, 0, 1, 0, 0, 0], [2, 10, 1, 1, 3, 1, 0, 0], [5, 15, 1, 5, 3, 2, 0, 0]], [[7, 13, 5, 7, 5, 5, 2, 0], [10, 32, 6, 11, 5, 10, 0, 0], [13, 62, 13, 21, 12, 12, 11, 0], [18, 40, 3, 4, 10, 4, 2, 1], [2, 2, 0, 1, 0, 1, 0, 0], [4, 12, 3, 6, 0, 2, 0, 0], [1, 8, 0, 1, 0, 0, 1, 0], [1, 2, 1, 1, 1, 2, 0, 0], [0, 0, 0, 0, 0, 0, 1, 0], [0, 0, 0, 0, 0, 0, 0, 0], [9, 17, 1, 2, 2, 2, 0, 0], [6, 18, 0, 3, 0, 2, 0, 0]]]};
+const COLORS = ['#c0392b','#8f9a92','#e67e22','#d4ac0d','#8e44ad','#2c3e50','#16a085','#3498db'];
+const DAYS = [31,28.25,31,30,31,30,31,31,30,31,30,31];
+const FIRE = ['#fbe7a1','#f6c064','#ee8a3c','#d64b2a','#8f1d16'];
+const METRIC = {
+  sum:{label:'합계', unit:'건', fmt:v=>Math.round(v).toLocaleString()},
+  avg:{label:'연평균', unit:'건', fmt:v=>v.toFixed(1)},
+  share:{label:'비율', unit:'%', fmt:v=>v.toFixed(1)},
+  daily:{label:'하루 평균', unit:'건', fmt:v=>v.toFixed(2)}
+};
+const S = {metric:'sum', stack:false, y0:2006, y1:2025, on:D.causes.map(()=>true), sel:3, grown:false};
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function lerpColor(t){
+  t=Math.max(0,Math.min(1,t)); const s=t*(FIRE.length-1), i=Math.min(FIRE.length-2,Math.floor(s)), f=s-i;
+  const a=parseInt(FIRE[i].slice(1),16), b=parseInt(FIRE[i+1].slice(1),16);
+  const ch=k=>Math.round(((a>>k)&255)*(1-f)+((b>>k)&255)*f);
+  return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+}
+
+// 현재 설정으로 [월][원인] 건수 집계
+function cube(){
+  const out=Array.from({length:12},()=>D.causes.map(()=>0));
+  D.years.forEach((y,yi)=>{ if(y<S.y0||y>S.y1) return;
+    for(let m=0;m<12;m++) for(let c=0;c<D.causes.length;c++) if(S.on[c]) out[m][c]+=D.v[yi][m][c]; });
+  return out;
+}
+function transform(count, m, total, nY){
+  switch(S.metric){
+    case 'sum': return count;
+    case 'avg': return count/nY;
+    case 'share': return total? count/total*100 : 0;
+    case 'daily': return count/nY/DAYS[m];
+  }
+}
+
+// ---------- 원형 막대
+const CX=280, CY=280, R0=92, R1=236;
+function pt(r,a){const t=a*Math.PI/180;return [CX+r*Math.sin(t), CY-r*Math.cos(t)];}
+function sector(r0,r1,a0,a1){
+  const [x0,y0]=pt(r0,a0),[x1,y1]=pt(r1,a0),[x2,y2]=pt(r1,a1),[x3,y3]=pt(r0,a1);
+  return `M${x0},${y0}L${x1},${y1}A${r1},${r1} 0 0 1 ${x2},${y2}L${x3},${y3}A${r0},${r0} 0 0 0 ${x0},${y0}Z`;
+}
+function drawRadial(p){
+  const svg=$('radial'), C=cube(), nY=S.y1-S.y0+1;
+  const mt=C.map(r=>r.reduce((a,b)=>a+b,0)), total=mt.reduce((a,b)=>a+b,0);
+  const vals=mt.map((c,m)=>transform(c,m,total,nY)), vmax=Math.max(...vals)||1;
+  let h='';
+  // 계절 고리
+  [['봄',75,165,'--spring'],['여름',165,255,'--summer'],['가을',255,345,'--autumn'],['겨울',345,435,'--winter']].forEach(([n,a0,a1,v])=>{
+    h+=`<path d="${sector(R0-16,R0-6,a0+1,a1-1)}" fill="${css(v)}"/>`;
+    const [tx,ty]=pt(R0-28,(a0+a1)/2); h+=`<text x="${tx}" y="${ty}" font-size="11" text-anchor="middle" dominant-baseline="middle" fill="${css('--muted')}">${n}</text>`;
+  });
+  // 눈금 원
+  [0.25,0.5,0.75,1].forEach(f=>{h+=`<circle cx="${CX}" cy="${CY}" r="${R0+(R1-R0)*f}" fill="none" stroke="${css('--faint')}" stroke-width="1"/>`;});
+  const [lx,ly]=pt(R1+2,0); h+=`<text x="${lx+6}" y="${ly+3}" font-size="10" fill="${css('--muted')}">${METRIC[S.metric].fmt(vmax)}${METRIC[S.metric].unit}</text>`;
+  for(let m=0;m<12;m++){
+    const mon=m+1, ac=mon*30, a0=ac-12.5, a1=ac+12.5, sel=mon===S.sel;
+    h+=`<g class="wedge" data-m="${mon}" tabindex="0" role="button" aria-label="${mon}월 ${METRIC[S.metric].label} ${METRIC[S.metric].fmt(vals[m])}${METRIC[S.metric].unit}">`;
+    h+=`<path d="${sector(R0,R1,a0,a1)}" fill="${sel?css('--faint'):'transparent'}"/>`;
+    if(S.stack){
+      let r=R0;
+      C[m].forEach((c,ci)=>{ if(!c) return; const len=transform(c,m,total,nY)/vmax*(R1-R0)*p;
+        h+=`<path d="${sector(r,r+len,a0,a1)}" fill="${COLORS[ci]}" data-tip="${mon}월 · ${D.causes[ci]} ${METRIC[S.metric].fmt(transform(c,m,total,nY))}${METRIC[S.metric].unit}"/>`; r+=len; });
+    } else {
+      const len=vals[m]/vmax*(R1-R0)*p;
+      h+=`<path d="${sector(R0,R0+Math.max(len,0.5),a0,a1)}" fill="${lerpColor(vals[m]/vmax)}" data-tip="${mon}월 ${METRIC[S.metric].fmt(vals[m])}${METRIC[S.metric].unit}"/>`;
+    }
+    const [tx,ty]=pt(R1+18,ac);
+    h+=`<text x="${tx}" y="${ty}" font-size="13" font-weight="${sel?700:400}" text-anchor="middle" dominant-baseline="middle" ${sel?`fill="${css('--ember')}"`:''}>${mon}월</text></g>`;
+  }
+  // 가운데
+  const sv=vals[S.sel-1];
+  h+=`<text x="${CX}" y="${CY-18}" font-size="14" text-anchor="middle" fill="${css('--muted')}">${S.sel}월 ${METRIC[S.metric].label}</text>`;
+  h+=`<text x="${CX}" y="${CY+14}" font-size="30" font-weight="700" text-anchor="middle">${METRIC[S.metric].fmt(sv)}</text>`;
+  h+=`<text x="${CX}" y="${CY+38}" font-size="13" text-anchor="middle" fill="${css('--muted')}">${METRIC[S.metric].unit}</text>`;
+  svg.innerHTML=h;
+}
+
+// ---------- 상세 패널
+function drawDetail(){
+  const C=cube(), nY=S.y1-S.y0+1, m=S.sel-1;
+  const mt=C.map(r=>r.reduce((a,b)=>a+b,0)), total=mt.reduce((a,b)=>a+b,0), cnt=mt[m];
+  const rank=[...mt].sort((a,b)=>b-a).indexOf(cnt)+1;
+  // 연도별
+  const per=D.years.map((y,yi)=>D.v[yi][m].reduce((a,c,ci)=>a+(S.on[ci]?c:0),0));
+  const inR=D.years.map(y=>y>=S.y0&&y<=S.y1);
+  const rv=per.filter((_,i)=>inR[i]); const mx=Math.max(...rv), mn=Math.min(...rv);
+  const mxY=D.years.find((y,i)=>inR[i]&&per[i]===mx), mnY=D.years.find((y,i)=>inR[i]&&per[i]===mn);
+  const pmax=Math.max(...per)||1;
+  let yb=`<svg viewBox="0 0 400 90" style="width:100%;height:auto;display:block;margin-bottom:4px" aria-label="연도별 ${S.sel}월 건수">`;
+  per.forEach((v,i)=>{ const w=400/20, bh=v/pmax*70, x=i*w+2, col=!inR[i]?css('--faint'):(v===mx?css('--ember'):css('--muted'));
+    yb+=`<rect x="${x}" y="${72-bh}" width="${w-4}" height="${Math.max(bh,0.5)}" fill="${col}" data-tip="${D.years[i]}년 ${S.sel}월 ${v}건"/>`; });
+  yb+=`<text x="0" y="87" font-size="10" fill="${css('--muted')}">2006</text><text x="400" y="87" font-size="10" text-anchor="end" fill="${css('--muted')}">2025</text></svg>`;
+  // 원인
+  const cs=D.causes.map((n,ci)=>({n,ci,v:C[m][ci]})).filter(o=>S.on[o.ci]).sort((a,b)=>b.v-a.v);
+  const cmax=Math.max(...cs.map(o=>o.v))||1;
+  const bars=cs.map(o=>`<div class="r"><span>${o.n}</span><div class="track"><div class="fill" style="width:${o.v/cmax*100}%;background:${COLORS[o.ci]}"></div></div><span class="n">${o.v}</span></div>`).join('');
+  const st=(k,val,lab)=>`<div class="stat ${S.metric===k?'on':''}"><b>${val}</b><span>${lab}</span></div>`;
+  $('detail').innerHTML=`
+    <h3>${S.sel}월</h3>
+    <p class="rank">${S.y0}–${S.y1}년, 12개월 중 ${rank}번째로 산불이 많은 달</p>
+    <div class="stats">
+      ${st('sum',cnt.toLocaleString()+'건','합계 ('+nY+'년)')}
+      ${st('share',(total?cnt/total*100:0).toFixed(1)+'%','한 해 산불 중 비율')}
+      ${st('avg',(cnt/nY).toFixed(1)+'건','연평균')}
+      ${st('daily',(cnt/nY/DAYS[m]).toFixed(2)+'건','하루 평균')}
+    </div>
+    <h4>해마다 얼마나 달랐나</h4>
+    ${yb}
+    <p class="note">가장 적은 해 ${mn}건(${mnY}년), 가장 많은 해 ${mx}건(${mxY}년)${mn>0?` · ${(mx/mn).toFixed(1)}배 차이`:''}</p>
+    <h4>원인별 건수</h4>
+    <div class="bars">${bars||'<p class="note">선택된 원인이 없습니다. 원인을 하나 이상 켜세요.</p>'}</div>`;
+}
+
+// ---------- 건수 vs 비율
+function drawCmp(){
+  const svg=$('cmpchart'), W=640,H=320,L=44,R=44,T=20,B=34, pw=W-L-R, ph=H-T-B;
+  const rows=D.years.map((y,yi)=>{ let sp=0,all=0;
+    for(let m=0;m<12;m++) for(let c=0;c<D.causes.length;c++) if(S.on[c]){ all+=D.v[yi][m][c]; if(m>=1&&m<=3) sp+=D.v[yi][m][c]; }
+    return {y,sp,all,sh:all?sp/all*100:null,inR:y>=S.y0&&y<=S.y1}; });
+  const cmax=Math.max(...rows.map(r=>r.sp))||1, bw=pw/rows.length;
+  const X=i=>L+i*bw+bw/2, Yc=v=>T+ph-v/cmax*ph, Ys=v=>T+ph-v/100*ph;
+  const muted=css('--muted'), faint=css('--faint'), ember=css('--ember');
+  let h='';
+  [0,25,50,75,100].forEach(p=>{ const y=Ys(p); h+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="${faint}"/><text x="${W-R+6}" y="${y+4}" font-size="10" fill="${ember}">${p}%</text>`;
+    h+=`<text x="${L-6}" y="${y+4}" font-size="10" text-anchor="end" fill="${muted}">${Math.round(cmax*p/100)}</text>`; });
+  rows.forEach((r,i)=>{ h+=`<rect x="${X(i)-bw*0.34}" y="${Yc(r.sp)}" width="${bw*0.68}" height="${T+ph-Yc(r.sp)}" fill="${r.inR?muted:faint}" opacity="${r.inR?0.55:1}" data-tip="${r.y}년 봄철 ${r.sp}건 / 전체 ${r.all}건"/>`;
+    if(i%2===0||i===rows.length-1) h+=`<text x="${X(i)}" y="${H-12}" font-size="10" text-anchor="middle" fill="${muted}">${String(r.y).slice(2)}</text>`; });
+  const pts=rows.map((r,i)=>r.sh==null?null:[X(i),Ys(r.sh),r]).filter(Boolean);
+  h+=`<polyline points="${pts.map(p=>p[0]+','+p[1]).join(' ')}" fill="none" stroke="${ember}" stroke-width="2"/>`;
+  pts.forEach(([x,y,r])=>{ h+=`<circle cx="${x}" cy="${y}" r="${r.inR?4:2.5}" fill="${r.inR?ember:faint}" stroke="${ember}" data-tip="${r.y}년 봄철 비율 ${r.sh.toFixed(1)}%"/>`; });
+  h+=`<text x="${L}" y="12" font-size="11" fill="${muted}">봄철 건수(막대, 왼쪽)</text><text x="${W-R}" y="12" font-size="11" text-anchor="end" fill="${ember}">봄철 비율(선, 오른쪽)</text>`;
+  svg.innerHTML=h;
+  // 동적 해설
+  const sel=rows.filter(r=>r.inR&&r.all>0);
+  if(sel.length<2){ $('finding').textContent='비교하려면 기간을 2년 이상으로 넓혀 주세요.'; return; }
+  const c=sel.map(r=>r.sp), s=sel.map(r=>r.sh);
+  const cv=a=>{const m=a.reduce((x,y)=>x+y,0)/a.length; return Math.sqrt(a.reduce((x,y)=>x+(y-m)**2,0)/(a.length-1))/m;};
+  const half=sel.filter(r=>r.sh>=50).length;
+  $('finding').innerHTML=`${S.y0}–${S.y1}년 봄철 산불은 <b>${Math.min(...c)}~${Math.max(...c)}건</b>으로 해마다 크게 달랐지만, 비율은 <b>${Math.min(...s).toFixed(0)}~${Math.max(...s).toFixed(0)}%</b> 범위였고 ${sel.length}년 중 ${half}년은 절반 이상이 봄에 났습니다. 변동계수(흔들림의 크기)는 건수 ${cv(c).toFixed(2)}, 비율 ${cv(s).toFixed(2)}입니다.`;
+}
+
+// ---------- 렌더 & 이벤트
+function render(p=1){ drawRadial(p); drawDetail(); drawCmp(); }
+function grow(){
+  if(reduce){ render(1); return; }
+  const t0=performance.now();
+  (function step(t){ const k=Math.min(1,(t-t0)/700), e=1-Math.pow(1-k,3); drawRadial(e); if(k<1) requestAnimationFrame(step); })(t0);
+  drawDetail(); drawCmp();
+}
+
+$('metrics').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(b.id==='stackBtn'){ S.stack=!S.stack; b.setAttribute('aria-pressed',S.stack); }
+  else if(b.dataset.m){ S.metric=b.dataset.m; $('metrics').querySelectorAll('[data-m]').forEach(x=>x.setAttribute('aria-pressed',x===b)); }
+  render();
+});
+function syncYears(e){
+  let a=+$('y0').value, b=+$('y1').value;
+  if(a>b){ if(e&&e.target.id==='y0') b=a; else a=b; $('y0').value=a; $('y1').value=b; }
+  S.y0=a; S.y1=b; $('yout').textContent=a===b?`${a}년`:`${a}–${b}`; render();
+}
+$('y0').addEventListener('input',syncYears); $('y1').addEventListener('input',syncYears);
+
+const chips=$('chips');
+D.causes.forEach((n,ci)=>{ const b=document.createElement('button'); b.className='chip'; b.setAttribute('aria-pressed','true');
+  b.innerHTML=`<span class="dot" style="background:${COLORS[ci]}"></span>${n}`;
+  b.onclick=()=>{ S.on[ci]=!S.on[ci]; b.setAttribute('aria-pressed',S.on[ci]); render(); }; chips.appendChild(b); });
+const all=document.createElement('button'); all.textContent='모두 켜기';
+all.onclick=()=>{ S.on=S.on.map(()=>true); chips.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed','true')); render(); };
+chips.appendChild(all);
+
+$('radial').addEventListener('click',e=>{ const g=e.target.closest('.wedge'); if(g){ S.sel=+g.dataset.m; render(); } });
+$('radial').addEventListener('keydown',e=>{ const g=e.target.closest('.wedge'); if(!g) return;
+  if(e.key==='Enter'||e.key===' '){ e.preventDefault(); S.sel=+g.dataset.m; render(); document.querySelector(`.wedge[data-m="${S.sel}"]`).focus(); }
+  if(e.key==='ArrowRight'||e.key==='ArrowLeft'){ e.preventDefault(); S.sel=(S.sel+(e.key==='ArrowRight'?0:10))%12+1; render(); document.querySelector(`.wedge[data-m="${S.sel}"]`).focus(); } });
+
+// 툴팁
+const tip=$('tip');
+document.addEventListener('mousemove',e=>{ const t=e.target.closest&&e.target.closest('[data-tip]');
+  if(t){ tip.textContent=t.getAttribute('data-tip'); tip.style.opacity=1;
+    tip.style.left=Math.min(e.clientX+12, window.innerWidth-tip.offsetWidth-8)+'px'; tip.style.top=(e.clientY+14)+'px'; }
+  else tip.style.opacity=0; });
+
+const mq=window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener&&mq.addEventListener('change',()=>render());
+new MutationObserver(()=>render()).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+grow();
+</script>
+</body>
+</html>

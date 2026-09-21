@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>산불 발생 3D 분석 — 월·연도·원인</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"></script>
+<style>
+:root{
+  --bg:#eceee9; --panel:#f7f8f5; --ink:#1f221e; --muted:#62685f; --line:#c9cdc4; --ember:#b8321f;
+  --plotbg:#f7f8f5; --grid:#d5d9d0;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#171915; --panel:#20231f; --ink:#e7e9e3; --muted:#9aa196; --line:#373b34; --ember:#e0634a; --plotbg:#20231f; --grid:#3a3e37; }}
+:root[data-theme="dark"]{ --bg:#171915; --panel:#20231f; --ink:#e7e9e3; --muted:#9aa196; --line:#373b34; --ember:#e0634a; --plotbg:#20231f; --grid:#3a3e37; }
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;line-height:1.6}
+main{max-width:1120px;margin:0 auto;padding:40px 20px 56px}
+h1{font-size:clamp(1.6rem,3.4vw,2.3rem);line-height:1.25;margin:0 0 10px;font-weight:700;letter-spacing:-0.01em}
+.lede{color:var(--muted);max-width:62ch;margin:0 0 36px}
+section{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--ember);padding:24px 24px 20px;margin-bottom:28px}
+h2{font-size:1.25rem;margin:0 0 4px}
+.axes{color:var(--muted);font-size:.92rem;margin:0 0 14px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:24px;align-items:start}
+.plot{width:100%;height:560px}
+.views{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+button{font:inherit;font-size:.85rem;background:transparent;color:var(--ink);border:1px solid var(--line);padding:5px 12px;cursor:pointer;border-radius:3px}
+button:hover{border-color:var(--ember)}
+button[aria-pressed="true"]{background:var(--ember);border-color:var(--ember);color:#fff}
+button:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+aside h3{font-size:.95rem;margin:4px 0 8px}
+aside p{font-size:.9rem;margin:0 0 12px;color:var(--ink)}
+aside p b{color:var(--ember);font-weight:600}
+footer{color:var(--muted);font-size:.8rem}
+@media (max-width:820px){.row{grid-template-columns:1fr}.plot{height:440px}section{padding:18px 14px}}
+</style>
+</head>
+<body>
+<main>
+<h1>산불은 언제, 왜 나는가 — 20년 기록을 입체로 보기</h1>
+<p class="lede">산림청 산불통계(2006~2025년, 총 9,240건)를 두 가지 3D 그래프로 나타냈습니다. 그래프를 드래그하면 회전하고, 스크롤하면 확대·축소되며, 막대나 면 위에 마우스를 올리면 정확한 건수가 표시됩니다.</p>
+
+<section>
+<h2>월 × 연도 — 봄철 능선은 20년 내내 반복된다</h2>
+<p class="axes">X축 월 · Y축 연도 · Z축(높이) 발생건수</p>
+<div class="views" data-plot="p1">
+  <button data-mode="surface" aria-pressed="true">곡면</button>
+  <button data-mode="bars" aria-pressed="false">막대</button>
+  <span style="width:12px"></span>
+  <button data-cam="default">기본 시점</button>
+  <button data-cam="month">월 방향에서</button>
+  <button data-cam="year">연도 방향에서</button>
+  <button data-cam="top">위에서</button>
+</div>
+<div class="row">
+  <div id="p1" class="plot"></div>
+  <aside>
+    <h3>읽는 법</h3>
+    <p>2~4월 구간이 모든 연도에 걸쳐 솟아 있는 <b>능선</b>을 이룹니다. 20년 중 17년은 3월 또는 4월이 그해 최다 발생 월이었습니다.</p>
+    <p>'월 방향에서' 보면 연도별 봉우리 높이를 비교할 수 있습니다. 2015년 3월(252건), 2023년 3월(229건), 2009년 4월(206건)이 가장 높은 봉우리입니다.</p>
+    <p>7~9월은 해마다 거의 평평한 <b>골짜기</b>입니다. 장마와 높은 습도 때문에 여름 산불은 드뭅니다.</p>
+  </aside>
+</div>
+</section>
+
+<section>
+<h2>월 × 원인 — 원인마다 불이 나는 달이 다르다</h2>
+<p class="axes">X축 월 · Y축 원인 · Z축(높이) 20년 누적 발생건수</p>
+<div class="views" data-plot="p2">
+  <button data-cam="default">기본 시점</button>
+  <button data-cam="month">월 방향에서</button>
+  <button data-cam="cause">원인 방향에서</button>
+  <button data-cam="top">위에서</button>
+</div>
+<div class="row">
+  <div id="p2" class="plot"></div>
+  <aside>
+    <h3>읽는 법</h3>
+    <p>입산자 실화는 <b>4월</b>(806건)에 가장 높고 5월까지 이어집니다. 등산객이 느는 시기와 겹칩니다.</p>
+    <p>논밭두렁 소각(523건)과 쓰레기 소각(402건)은 <b>3월</b>에 몰립니다. 영농 준비철 소각 시기입니다.</p>
+    <p>성묘객 실화는 4월(한식)과 9월(추석)에 두 번 솟습니다. 범례 항목을 클릭하면 원인별로 켜고 끌 수 있습니다.</p>
+  </aside>
+</div>
+</section>
+
+<footer>출처: 산림청 「산불통계」 월별·원인별 발생건수(KOSIS, TX_13625_A003). 2022년에는 '어린이불장난' 항목이 없어 0건으로 처리했습니다.</footer>
+</main>
+
+<script>
+const D = {"years": [2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025], "ym": [[48, 41, 175, 49, 27, 1, 0, 0, 7, 25, 23, 9], [61, 122, 70, 110, 11, 18, 0, 0, 0, 1, 20, 5], [7, 70, 85, 79, 32, 2, 0, 2, 13, 25, 45, 29], [64, 32, 119, 206, 52, 17, 0, 0, 13, 23, 23, 21], [24, 30, 22, 51, 45, 21, 0, 0, 0, 5, 44, 40], [33, 40, 94, 80, 6, 9, 0, 0, 0, 6, 5, 4], [6, 9, 23, 45, 54, 35, 0, 3, 1, 14, 5, 2], [7, 30, 113, 69, 30, 6, 0, 7, 3, 11, 9, 11], [49, 54, 101, 166, 55, 13, 11, 0, 4, 16, 19, 4], [16, 40, 252, 49, 76, 88, 4, 8, 33, 41, 8, 8], [36, 62, 116, 86, 21, 28, 1, 14, 5, 1, 9, 12], [21, 56, 192, 122, 104, 86, 3, 0, 4, 4, 50, 50], [29, 130, 83, 88, 3, 45, 15, 46, 3, 9, 13, 32], [106, 61, 141, 152, 99, 15, 15, 4, 2, 9, 19, 30], [29, 42, 171, 184, 26, 38, 0, 1, 2, 35, 46, 46], [44, 82, 44, 94, 20, 3, 7, 6, 1, 0, 24, 24], [88, 143, 82, 180, 115, 26, 3, 0, 11, 24, 47, 37], [38, 114, 229, 108, 33, 11, 0, 1, 2, 13, 25, 22], [18, 11, 74, 67, 17, 28, 0, 7, 6, 2, 18, 31], [44, 74, 144, 82, 6, 27, 11, 8, 1, 0, 33, 29]], "causes": ["입산자실화", "기타", "논밭두렁등소각", "쓰레기소각", "담뱃불실화", "건축물화재", "성묘객실화", "어린이불장난"], "cm": [[238, 313, 516, 806, 447, 215, 27, 43, 48, 140, 213, 150], [231, 284, 497, 461, 208, 163, 29, 38, 18, 58, 143, 142], [63, 217, 523, 258, 55, 49, 5, 2, 7, 21, 22, 21], [91, 155, 402, 216, 55, 45, 3, 7, 10, 16, 49, 50], [64, 96, 177, 137, 33, 21, 2, 4, 5, 16, 30, 25], [49, 89, 117, 79, 18, 20, 3, 4, 0, 3, 25, 51], [27, 67, 78, 101, 11, 4, 1, 9, 23, 9, 2, 6], [5, 22, 20, 9, 5, 0, 0, 0, 0, 1, 1, 1]]};
+const MONTHS = Array.from({length:12},(_,i)=>(i+1)+'월');
+const CAUSE_COLORS = ['#c0392b','#8f9a92','#e67e22','#d4ac0d','#8e44ad','#2c3e50','#16a085','#3498db'];
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const FIRE = [[0,'#fdf3c4'],[0.15,'#f9d27a'],[0.35,'#f08a3c'],[0.6,'#d2402a'],[1,'#6e1414']];
+
+// 직육면체 막대 하나를 mesh 정점/면으로
+function addBox(acc, x, y, h, w){
+  const b = acc.x.length, x0=x-w/2, x1=x+w/2, y0=y-w/2, y1=y+w/2;
+  [[x0,y0,0],[x1,y0,0],[x1,y1,0],[x0,y1,0],[x0,y0,h],[x1,y0,h],[x1,y1,h],[x0,y1,h]]
+    .forEach(p=>{acc.x.push(p[0]);acc.y.push(p[1]);acc.z.push(p[2]);acc.v.push(h);});
+  const f=[[0,1,2],[0,2,3],[4,5,6],[4,6,7],[0,1,5],[0,5,4],[1,2,6],[1,6,5],[2,3,7],[2,7,6],[3,0,4],[3,4,7]];
+  f.forEach(t=>{acc.i.push(b+t[0]);acc.j.push(b+t[1]);acc.k.push(b+t[2]);});
+}
+function emptyAcc(){return {x:[],y:[],z:[],v:[],i:[],j:[],k:[]};}
+
+function baseLayout(xTitle, yTitle, yVals, yText, eye){
+  const ink=css('--ink'), grid=css('--grid'), bg=css('--plotbg');
+  const ax = t => ({title:{text:t,font:{size:13}}, gridcolor:grid, zerolinecolor:grid, backgroundcolor:bg, showbackground:true, color:ink});
+  return {
+    paper_bgcolor:bg, plot_bgcolor:bg, font:{family:'IBM Plex Sans KR, sans-serif', color:ink, size:11},
+    margin:{l:0,r:0,t:10,b:0},
+    scene:{
+      xaxis:Object.assign(ax(xTitle),{tickvals:[1,2,3,4,5,6,7,8,9,10,11,12],ticktext:MONTHS}),
+      yaxis:Object.assign(ax(yTitle), yVals?{tickvals:yVals,ticktext:yText}:{}),
+      zaxis:ax('발생건수'),
+      camera:{eye}, aspectmode:'manual', aspectratio:{x:1.3,y:1.3,z:0.75}
+    },
+    legend:{orientation:'h', y:1.02, x:0, font:{size:11}}
+  };
+}
+
+// ---- 그래프 1: 월 × 연도
+const CAM1 = {default:{x:1.55,y:-1.55,z:0.95}, month:{x:0.01,y:-2.3,z:0.35}, year:{x:2.3,y:0.01,z:0.35}, top:{x:0.01,y:-0.01,z:2.5}};
+let mode1='surface';
+function traces1(){
+  const zmax = Math.max(...D.ym.flat());
+  if(mode1==='surface'){
+    return [{type:'surface', x:[1,2,3,4,5,6,7,8,9,10,11,12], y:D.years, z:D.ym,
+      colorscale:FIRE, cmin:0, cmax:zmax, colorbar:{title:{text:'건수'},thickness:12,len:0.6},
+      contours:{z:{show:true,usecolormap:true,project:{z:true},width:1}},
+      customdata:D.ym.map((r,yi)=>r.map(()=>D.years[yi])),
+      hovertemplate:'%{customdata}년 %{x}월<br><b>%{z}건</b><extra></extra>'}];
+  }
+  const a=emptyAcc(), hx=[],hy=[],hz=[];
+  D.ym.forEach((row,yi)=>row.forEach((v,mi)=>{ if(v>0) addBox(a,mi+1,D.years[yi],v,0.72); hx.push(mi+1);hy.push(D.years[yi]);hz.push(v);}));
+  return [{type:'mesh3d', x:a.x,y:a.y,z:a.z,i:a.i,j:a.j,k:a.k, intensity:a.v, colorscale:FIRE, cmin:0, cmax:zmax,
+      flatshading:true, lighting:{ambient:0.65,diffuse:0.7,specular:0.1}, colorbar:{title:{text:'건수'},thickness:12,len:0.6}, hoverinfo:'skip'},
+    {type:'scatter3d', mode:'markers', x:hx,y:hy,z:hz, marker:{size:3,opacity:0}, showlegend:false,
+      hovertemplate:'%{y}년 %{x}월<br><b>%{z}건</b><extra></extra>'}];
+}
+function draw1(eye){
+  const cur = document.getElementById('p1').layout;
+  const e = eye || (cur && cur.scene && cur.scene.camera ? cur.scene.camera.eye : CAM1.default);
+  Plotly.react('p1', traces1(), baseLayout('월','연도',null,null,e), {responsive:true, displaylogo:false});
+}
+
+// ---- 그래프 2: 월 × 원인
+const CAM2 = {default:{x:1.6,y:-1.5,z:0.9}, month:{x:0.01,y:-2.3,z:0.35}, cause:{x:2.3,y:0.01,z:0.35}, top:{x:0.01,y:-0.01,z:2.5}};
+function traces2(){
+  const out=[];
+  D.causes.forEach((c,ci)=>{
+    const a=emptyAcc();
+    D.cm[ci].forEach((v,mi)=>{ if(v>0) addBox(a,mi+1,ci,v,0.62); });
+    out.push({type:'mesh3d', name:c, legendgroup:c, showlegend:true, x:a.x,y:a.y,z:a.z,i:a.i,j:a.j,k:a.k,
+      color:CAUSE_COLORS[ci], flatshading:true, lighting:{ambient:0.6,diffuse:0.75,specular:0.1}, hoverinfo:'skip'});
+    out.push({type:'scatter3d', mode:'markers', legendgroup:c, showlegend:false,
+      x:MONTHS.map((_,mi)=>mi+1), y:MONTHS.map(()=>ci), z:D.cm[ci], marker:{size:3,opacity:0},
+      hovertemplate:c+' · %{x}월<br><b>%{z}건</b><extra></extra>'});
+  });
+  return out;
+}
+function draw2(eye){
+  const cur = document.getElementById('p2').layout;
+  const e = eye || (cur && cur.scene && cur.scene.camera ? cur.scene.camera.eye : CAM2.default);
+  const lay = baseLayout('월','원인', D.causes.map((_,i)=>i), D.causes, e);
+  lay.scene.aspectratio={x:1.4,y:1.1,z:0.75};
+  Plotly.react('p2', traces2(), lay, {responsive:true, displaylogo:false});
+}
+
+document.querySelectorAll('.views').forEach(g=>{
+  const id=g.dataset.plot;
+  g.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.mode){
+      mode1=b.dataset.mode;
+      g.querySelectorAll('[data-mode]').forEach(x=>x.setAttribute('aria-pressed', x===b?'true':'false'));
+      draw1();
+    } else if(b.dataset.cam){
+      const eye=(id==='p1'?CAM1:CAM2)[b.dataset.cam];
+      Plotly.relayout(id,{'scene.camera.eye':eye});
+    }
+  });
+});
+
+function drawAll(){ draw1(); draw2(); }
+if(window.Plotly){ drawAll(); }
+else { document.querySelectorAll('.plot').forEach(p=>p.textContent='그래프 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 새로고침하세요.'); }
+const mq = window.matchMedia('(prefers-color-scheme: dark)');
+mq.addEventListener && mq.addEventListener('change',()=>window.Plotly&&drawAll());
+new MutationObserver(()=>window.Plotly&&drawAll()).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+</script>
+</body>
+</html>
